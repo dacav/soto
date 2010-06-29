@@ -4,9 +4,16 @@
 extern "C" {
 #endif
 
+#include <alsa/asoundlib.h>
+
 /** Option keeping structure */
 typedef struct {
     const char *device;         /**< PCM device */
+    enum {
+        MONO = 1, STEREO = 2
+    } mode;                     /**< Number of input channels */
+    unsigned rate;              /**< Sample rate */
+    snd_pcm_format_t format;
 } soto_opts_t;
 
 /** Parse the command line options

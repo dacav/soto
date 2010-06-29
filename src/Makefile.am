@@ -1,4 +1,4 @@
-AM_CFLAGS = -I./ -std=gnu99 -Wall -Werror
+AM_CFLAGS = -I./ -std=gnu99 -Wall -Werror -pthread
 bin_PROGRAMS = soto
 
 soto_SOURCES = main.c \

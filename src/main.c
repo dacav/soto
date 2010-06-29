@@ -11,7 +11,8 @@ int main (int argc, char ** argv)
         exit(EXIT_FAILURE);
     }
 
-    printf("LOL %s\n", opts.device);
+    printf("dev=%s\nmode=%d\nrate=%u\nformat=%d\n", opts.device,
+            (int) opts.mode, opts.rate, opts.format);
 
     exit(EXIT_SUCCESS);
 }
