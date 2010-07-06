@@ -3,5 +3,5 @@ bin_PROGRAMS = soto
 
 soto_SOURCES = main.c \
                options.c headers/options.h
-soto_LADD = -lasound
+soto_LDADD = -lasound -ldacav
 

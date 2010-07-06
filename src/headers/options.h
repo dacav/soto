@@ -5,16 +5,31 @@ extern "C" {
 #endif
 
 #include <alsa/asoundlib.h>
+#include <dacav/dacav.h>
+#include <stdint.h>
 
-/** Option keeping structure */
+typedef struct {
+    uint64_t period;        /**< Length of the period TODO decide mu */
+} thrinfo_t;
+
+/** Option keeping structure.
+ *
+ * @note The field opts_t::minpio will be added to the value returned by
+ *       the sched_get_priority_min() system call.
+ */
 typedef struct {
     const char *device;         /**< PCM device */
     enum {
         MONO = 1, STEREO = 2
     } mode;                     /**< Number of input channels */
-    unsigned rate;              /**< Sample rate */
-    snd_pcm_format_t format;
-} soto_opts_t;
+    unsigned rate;              /**< Sample rate; */
+    snd_pcm_format_t format;    /**< Sampling input format; */
+    unsigned minprio;           /**< Priority for the thread having the
+                                     longest sampling period; */
+
+    dlist_t * threads;          /**< Sampling threads info. */
+    size_t nthreads;            /**< Number of threads */
+} opts_t;
 
 /** Parse the command line options
  *
@@ -23,8 +38,9 @@ typedef struct {
  * @param argv Main's argument vector;
  * @return 0 on success, non-zero on fail.
  */
-int soto_opts_parse (soto_opts_t *opts, int argc,
-                     char * const argv[]);
+int opts_parse (opts_t *opts, int argc, char * const argv[]);
+
+void opts_destroy (opts_t *opts);
 
 #ifdef __cplusplus
 }

@@ -6,6 +6,8 @@
 #include <string.h>
 #include <stdarg.h>
 #include <stdlib.h>
+#include <sched.h>
+#include <assert.h>
 
 static const char optstring[] = "d:hr:m:f:";
 static const struct option longopts[] = {
@@ -13,7 +15,9 @@ static const struct option longopts[] = {
     {"sample-rate", 1, NULL, 'r'},      // rate 
     {"sample-mode", 1, NULL, 'm'},      // mono, stereo
     {"sample-format", 1, NULL, 'f'},    // 8, 16, 24, 32
+    {"min-prio", 1, NULL, 'p'},
     {"help", 0, NULL, 'h'},
+    {"thread", 1, NULL, 't'},
     {NULL, 0, NULL, 0}
 };
 
@@ -93,19 +97,22 @@ int to_pcm_format (int index, snd_pcm_format_t *fmt)
 }
 
 static const char help [] =
-    "\n" PACKAGE_STRING "\n"
-    "Usage: %s [options]\n\n"
-    "Available options\n\n"
-    "  --device={dev} | -d {dev}\n"
-    "        Specify an audio device\n\n"
-    "  --sample-rate={rate} | -r {rate}\n"
-    "        Specify a sample rate\n\n"
-    "  --sample-mode={mode} | -m {mode}\n"
-    "        Specify a sample mode\n\n"
-    "  --sample-format={fmt} | -f {fmt}\n"
-    "        Specify a sample format\n\n"
-    "  --help  | -h\n"
-    "        Print this help\n";
+"\n" PACKAGE_STRING "\n"
+"Usage: %s [options]\n\n"
+"Available options\n\n"
+"  --device={dev} | -d {dev}\n"
+"        Specify an audio device\n\n"
+"  --sample-rate={rate} | -r {rate}\n"
+"        Specify a sample rate\n\n"
+"  --sample-mode={mode} | -m {mode}\n"
+"        Specify a sample mode\n\n"
+"  --sample-format={fmt} | -f {fmt}\n"
+"        Specify a sample format\n\n"
+"  --min-prio={priority}\n"
+"        Specify the realtime priority for the thread having the longest\n"
+"        sampling period\n\n."
+"  --help  | -h\n"
+"        Print this help\n";
 
 static inline
 void print_help (const char *progname)
@@ -148,13 +155,24 @@ int to_unsigned (const char *arg, unsigned *val)
     return sscanf(arg, "%u", val) == 1 ? 0 : -1;
 }
 
-extern char *optarg;
-
-int soto_opts_parse (soto_opts_t *so, int argc,
-                     char * const argv[])
+static
+int to_priority (const char *arg, unsigned *prio)
 {
-    int opt;
+    unsigned val;
 
+    if (to_unsigned(arg, &val) == -1)
+        return -1;
+    val += sched_get_priority_min(SCHED_FIFO);
+    if (val > sched_get_priority_max(SCHED_FIFO)) 
+        return -2;
+
+    *prio = val;
+    return 0;
+}
+
+static
+void set_defaults (opts_t *so)
+{
     /* TODO Parametrize default values for options through `configure.ac'
      *      Produce a possibly verbose output
      */
@@ -162,7 +180,25 @@ int soto_opts_parse (soto_opts_t *so, int argc,
     so->mode = STEREO;
     so->rate = 44100;
     so->format = SND_PCM_FORMAT_U16_LE;
+    so->minprio = 0;
+    so->threads = dlist_new();
+}
 
+static
+int to_thrinfo (const char *arg, thrinfo_t *thr)
+{
+    return sscanf(arg, "%llu", (long long *) &thr->period) == 1 ? 0 : -1;
+}
+
+extern char *optarg;
+
+int opts_parse (opts_t *so, int argc, char * const argv[])
+{
+    int opt;
+    thrinfo_t thdi;
+    void *aux_thdi;
+
+    set_defaults(so);
     while ((opt = getopt_long(argc, argv, optstring, longopts, NULL))
            != -1) {
         switch (opt) {
@@ -185,15 +221,38 @@ int soto_opts_parse (soto_opts_t *so, int argc,
                         so->mode = STEREO;
                         break;
                     default:
-                        notify_error(argv[0], "invalid mode '%s'", optarg);
+                        notify_error(argv[0], "invalid mode: '%s'", optarg);
                         return -1;
                 }
                 break;
             case 'r':
                 if (to_unsigned(optarg, &so->rate) == -1) {
-                    notify_error(argv[0], "invalid rate '%s'", optarg);
+                    notify_error(argv[0], "invalid rate: '%s'", optarg);
                     return -1;
                 }
+                break;
+            case 'p':
+                switch (to_priority(optarg, &so->minprio)) {
+                    case -1:
+                        notify_error(argv[0],
+                                     "invalid min priority value: '%s'",
+                                     optarg);
+                        return -1;
+                    case -2:
+                        notify_error(argv[0], "min priority too big: %s",
+                                     optarg);
+                        return -1;
+                }
+                break;
+            case 't':
+                if (to_thrinfo(optarg, &thdi) == -1) {
+                    notify_error(argv[0], "invalid thread info: '%s'",
+                                 optarg);
+                    return -1;
+                }
+                assert(aux_thdi = malloc(sizeof(thrinfo_t)));
+                memcpy(aux_thdi, (void *) &thdi, sizeof(thrinfo_t));
+                so->threads = dlist_append(so->threads, aux_thdi);
                 break;
             case 'h':
             case '?':
@@ -202,5 +261,10 @@ int soto_opts_parse (soto_opts_t *so, int argc,
         }
     }
     return 0;
+}
+
+void opts_destroy (opts_t *opts)
+{
+    dlist_free(opts->threads, free);
 }
 
