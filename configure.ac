@@ -10,11 +10,15 @@ AC_CONFIG_MACRO_DIR([m4])
 # Checks for programs.
 AC_PROG_CC
 
-# Checks for libraries.
+AC_ARG_ENABLE([debug],
+              AS_HELP_STRING([--enable-debug], [Enable verbosity]),
+              AC_DEFINE([DEBUG_ENABLED], [], [Debugging log enabled]))
+
+# Checks for header files.
 AC_CHECK_HEADER([alsa/asoundlib.h], [],
                 [AC_MSG_ERROR(libasound2 headers not found.)])
 
-# Checks for header files.
+# Checks for libraries.
 
 # Checks for typedefs, structures, and compiler characteristics.
 

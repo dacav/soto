@@ -9,7 +9,7 @@
 #include <sched.h>
 #include <assert.h>
 
-static const char optstring[] = "d:hr:m:f:";
+static const char optstring[] = "d:hr:m:f:t:";
 static const struct option longopts[] = {
     {"device", 1, NULL, 'd'},
     {"sample-rate", 1, NULL, 'r'},      // rate 
@@ -98,7 +98,10 @@ int to_pcm_format (int index, snd_pcm_format_t *fmt)
 
 static const char help [] =
 "\n" PACKAGE_STRING "\n"
-"Usage: %s [options]\n\n"
+"Usage: %s -t p0 [-t p1 ...] [options]\n\n"
+"  --thread={period} | -t {period}\n"
+"        Add a periodic thread with the given period. This option can be\n"
+"        used many times but must be used at least once\n\n"
 "Available options\n\n"
 "  --device={dev} | -d {dev}\n"
 "        Specify an audio device\n\n"
@@ -156,11 +159,11 @@ int to_unsigned (const char *arg, unsigned *val)
 }
 
 static
-int to_priority (const char *arg, unsigned *prio)
+int to_priority (const char *arg, int *prio)
 {
-    unsigned val;
+    int val;
 
-    if (to_unsigned(arg, &val) == -1)
+    if (to_unsigned(arg, (unsigned *)&val) == -1)
         return -1;
     val += sched_get_priority_min(SCHED_FIFO);
     if (val > sched_get_priority_max(SCHED_FIFO)) 
@@ -180,12 +183,13 @@ void set_defaults (opts_t *so)
     so->mode = STEREO;
     so->rate = 44100;
     so->format = SND_PCM_FORMAT_U16_LE;
-    so->minprio = 0;
+    so->minprio = sched_get_priority_min(SCHED_FIFO);
     so->threads = dlist_new();
+    so->nthreads = 0;
 }
 
 static
-int to_thrinfo (const char *arg, thrinfo_t *thr)
+int to_thrdinfo (const char *arg, thrd_info_t *thr)
 {
     return sscanf(arg, "%llu", (long long *) &thr->period) == 1 ? 0 : -1;
 }
@@ -195,7 +199,7 @@ extern char *optarg;
 int opts_parse (opts_t *so, int argc, char * const argv[])
 {
     int opt;
-    thrinfo_t thdi;
+    thrd_info_t thdi;
     void *aux_thdi;
 
     set_defaults(so);
@@ -245,20 +249,25 @@ int opts_parse (opts_t *so, int argc, char * const argv[])
                 }
                 break;
             case 't':
-                if (to_thrinfo(optarg, &thdi) == -1) {
+                if (to_thrdinfo(optarg, &thdi) == -1) {
                     notify_error(argv[0], "invalid thread info: '%s'",
                                  optarg);
                     return -1;
                 }
-                assert(aux_thdi = malloc(sizeof(thrinfo_t)));
-                memcpy(aux_thdi, (void *) &thdi, sizeof(thrinfo_t));
+                assert(aux_thdi = malloc(sizeof(thrd_info_t)));
+                memcpy(aux_thdi, (void *) &thdi, sizeof(thrd_info_t));
                 so->threads = dlist_append(so->threads, aux_thdi);
+                so->nthreads ++;
                 break;
             case 'h':
             case '?':
                 print_help(argv[0]);
                 return -1;
         }
+    }
+    if (so->nthreads == 0) {
+        notify_error(argv[0], "at lest one thread needed");
+        return -1;
     }
     return 0;
 }

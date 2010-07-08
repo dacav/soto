@@ -8,9 +8,11 @@ extern "C" {
 #include <dacav/dacav.h>
 #include <stdint.h>
 
+
 typedef struct {
-    uint64_t period;        /**< Length of the period TODO decide mu */
-} thrinfo_t;
+    uint64_t period;        /**< Length of the period TODO decide measure
+                             *   unit */
+} thrd_info_t;
 
 /** Option keeping structure.
  *
@@ -24,11 +26,11 @@ typedef struct {
     } mode;                     /**< Number of input channels */
     unsigned rate;              /**< Sample rate; */
     snd_pcm_format_t format;    /**< Sampling input format; */
-    unsigned minprio;           /**< Priority for the thread having the
+    int minprio;                /**< Priority for the thread having the
                                      longest sampling period; */
 
     dlist_t * threads;          /**< Sampling threads info. */
-    size_t nthreads;            /**< Number of threads */
+    size_t nthreads;            /**< Number of sampling threads */
 } opts_t;
 
 /** Parse the command line options
