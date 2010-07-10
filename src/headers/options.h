@@ -8,11 +8,12 @@ extern "C" {
 #include <dacav/dacav.h>
 #include <stdint.h>
 
+#include "headers/thrd.h"
 
 typedef struct {
     uint64_t period;        /**< Length of the period TODO decide measure
                              *   unit */
-} thrd_info_t;
+} opts_thrd_t;
 
 /** Option keeping structure.
  *

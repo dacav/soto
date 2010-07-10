@@ -189,9 +189,24 @@ void set_defaults (opts_t *so)
 }
 
 static
-int to_thrdinfo (const char *arg, thrd_info_t *thr)
+int to_thrdinfo (const char *arg, opts_thrd_t *thr)
 {
-    return sscanf(arg, "%llu", (long long *) &thr->period) == 1 ? 0 : -1;
+    uint64_t p;
+
+    if (sscanf(arg, "%llu", (long long *) &p) != 1)
+        return -1;
+    if (p == 0)
+        return -1;
+
+    thr->period = p;
+    return 0;
+}
+
+static
+int cmp_period (const opts_thrd_t *t0, const opts_thrd_t *t1)
+{
+    /* Smaller period = greater priority */
+    return t1->period - t0->period;
 }
 
 extern char *optarg;
@@ -199,7 +214,7 @@ extern char *optarg;
 int opts_parse (opts_t *so, int argc, char * const argv[])
 {
     int opt;
-    thrd_info_t thdi;
+    opts_thrd_t thdi;
     void *aux_thdi;
 
     set_defaults(so);
@@ -213,6 +228,7 @@ int opts_parse (opts_t *so, int argc, char * const argv[])
                 if (to_pcm_format(check_optarg(optarg, avail_format),
                                   &so->format) == -1) {
                     notify_error(argv[0], "invalid format '%s'", optarg);
+                    opts_destroy(so);
                     return -1;
                 }
                 break;
@@ -226,12 +242,14 @@ int opts_parse (opts_t *so, int argc, char * const argv[])
                         break;
                     default:
                         notify_error(argv[0], "invalid mode: '%s'", optarg);
+                        opts_destroy(so);
                         return -1;
                 }
                 break;
             case 'r':
                 if (to_unsigned(optarg, &so->rate) == -1) {
                     notify_error(argv[0], "invalid rate: '%s'", optarg);
+                    opts_destroy(so);
                     return -1;
                 }
                 break;
@@ -241,10 +259,12 @@ int opts_parse (opts_t *so, int argc, char * const argv[])
                         notify_error(argv[0],
                                      "invalid min priority value: '%s'",
                                      optarg);
+                        opts_destroy(so);
                         return -1;
                     case -2:
                         notify_error(argv[0], "min priority too big: %s",
                                      optarg);
+                        opts_destroy(so);
                         return -1;
                 }
                 break;
@@ -252,10 +272,11 @@ int opts_parse (opts_t *so, int argc, char * const argv[])
                 if (to_thrdinfo(optarg, &thdi) == -1) {
                     notify_error(argv[0], "invalid thread info: '%s'",
                                  optarg);
+                    opts_destroy(so);
                     return -1;
                 }
-                assert(aux_thdi = malloc(sizeof(thrd_info_t)));
-                memcpy(aux_thdi, (void *) &thdi, sizeof(thrd_info_t));
+                assert(aux_thdi = malloc(sizeof(opts_thrd_t)));
+                memcpy(aux_thdi, (void *) &thdi, sizeof(opts_thrd_t));
                 so->threads = dlist_append(so->threads, aux_thdi);
                 so->nthreads ++;
                 break;
@@ -269,6 +290,7 @@ int opts_parse (opts_t *so, int argc, char * const argv[])
         notify_error(argv[0], "at lest one thread needed");
         return -1;
     }
+    so->threads = dlist_sort(so->threads, (dcmp_func_t) cmp_period);
     return 0;
 }
 

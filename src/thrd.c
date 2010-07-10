@@ -1,11 +1,11 @@
 #include "headers/thrd.h"
-#include "headers/options.h"
 
 #include <sched.h>
 #include <error.h>
 #include <stdio.h>
 #include <assert.h>
 #include <stdlib.h>
+#include <string.h>
 
 /* Flags for thrd_t::status */
 #define THRD_ALIVE          1 << 0
@@ -24,42 +24,48 @@ void * thread_routine (void * arg)
 {
     thrd_t *thrd = (thrd_t *)arg;
     thrd_sync_t *sync = thrd->sync;
+    thrd_info_t *info = thrd->info;
+    uint8_t ctrl;
 
-    DEBUG_FMT("Started and waiting, period=%llu",
-              (unsigned long long) thrd->period);
+    for (;;) {
 
-    pthread_mutex_lock(&sync->mux);
-    while ((*sync->ctrl & THRD_POOL_CONDITION) == 0) {
-        pthread_cond_wait(&sync->cond, &sync->mux);
-        DEBUG_FMT("Woken up period=%d", (int)thrd->period);
+        pthread_mutex_lock(&sync->mux);
+        while ((*sync->ctrl & THRD_POOL_CONDITION) == 0) {
+            pthread_cond_wait(&sync->cond, &sync->mux);
+        }
+        ctrl = *sync->ctrl;
+        pthread_mutex_unlock(&sync->mux);
+
+        /* I've been asked to do seppuku. */
+        if (ctrl & THRD_POOL_KILLALL) {
+            DEBUG_MSG("Seppuku required");
+            break;
+        }
+
+        /* Spontaneous seppuku */
+        if (info->callback(info->context) == 0) {
+            DEBUG_MSG("Completed my job");
+            break;
+        }
+
     }
-    pthread_mutex_unlock(&sync->mux);
 
-    DEBUG_FMT("Phase 1 period=%d", (int)thrd->period);
-    uint16_t n = 0;
-    for (n = 0; n < 30000; n ++);
-    DEBUG_FMT("Phase 2 period=%d", (int)thrd->period);
-    for (n = 0; n < 30000; n ++);
-    DEBUG_FMT("Phase 3 period=%d", (int)thrd->period);
-
-    return NULL;
+    pthread_exit(NULL);
 }
 
 static
-int startup(thrd_t *thrd, thrd_sync_t *sync, int prio)
+int startup(thrd_t *thrd, thrd_sync_t *sync, thrd_info_t *userinfo)
 {
     pthread_attr_t attr;
     int err;
     struct sched_param param = {
-        .sched_priority = prio
+        .sched_priority = userinfo->priority
     };
-
-    DEBUG_FMT("Enabling thread (period %3llu) with priority %d...",
-          (long long unsigned) thrd->period, prio);
 
     /* Thread enabled but still not active, thus it will wait until
      * active. */
     thrd->sync = sync;
+    thrd->info = userinfo;
 
     /* Setting thread as real-time, scheduled as FIFO and with the given
      * priority. */
@@ -69,13 +75,14 @@ int startup(thrd_t *thrd, thrd_sync_t *sync, int prio)
     assert(pthread_attr_setinheritsched(&attr,
            PTHREAD_EXPLICIT_SCHED) == 0);
     err = pthread_create(&thrd->handler, &attr, thread_routine,
-                         (void *)thrd);
+                         (void *) thrd);
     pthread_attr_destroy(&attr);
     if (err != 0) return err;
 
+    DEBUG_FMT("Activated thread with id [%08X], priority [%d]",
+              (unsigned) thrd->handler, param.sched_priority);
     thrd->status = THRD_INITIALIZED | THRD_ALIVE;
-
-    return err;
+    return 0;
 }
 
 static
@@ -93,97 +100,67 @@ void sync_destroy (thrd_sync_t *sync)
     pthread_mutex_destroy(&sync->mux);
 }
 
-static
-int cmp_period (const void *v0, const void *v1)
+int thrd_init (thrd_pool_t *pool, dlist_t *threads, size_t nthreads)
 {
-    const thrd_t *i0 = *((const thrd_t **) v0);
-    const thrd_t *i1 = *((const thrd_t **) v1);
-
-    /* If i0's period is smaller w.r.t i1's one, then i0 must come
-     * first. */
-    return i1->period - i0->period;
-}
-
-/* This function produces a heap which orders the threads by period:
- * shortest one come first */
-static
-void insert_ordered (dlist_t *tinfo, thrd_t **ths, size_t nt)
-{
-    size_t used = 0;
+    thrd_t *ths;
     diter_t *i;
-
-    i = dlist_iter_new(&tinfo);
-    while (diter_hasnext(i)) {
-        thrd_t *t;
-
-        assert(t = (thrd_t *) malloc(sizeof(thrd_t)));
-        t->period = ((thrd_info_t *) diter_next(i))->period;
-        ths[used ++] = t; 
-    }
-    dlist_iter_free(i);
-
-    qsort((void *)ths, nt, sizeof(thrd_t *), cmp_period);
-}
-
-int thrd_init (thrd_pool_t *pool, opts_t *opts)
-{
-    size_t nt;
-    thrd_t **ths;
-    register int i;
-    int prio;
 
     pool->err = 0;
 
-    pool->nthreads = nt = opts->nthreads;
-    assert(ths = (thrd_t **) malloc(sizeof(thrd_t *) * nt));
+    assert(ths = (thrd_t *) malloc(sizeof(thrd_t) * nthreads));
     pool->threads = ths;
+    pool->nthreads = nthreads;
 
     sync_init(&pool->sync, &pool->status);
 
-    /* Ordering by thread periods */
-    insert_ordered(opts->threads, ths, nt);
-
-    prio = opts->minprio + 1;
-    for (i = 0; i < nt; i ++) {
+    i = dlist_iter_new(&threads);
+    while (diter_hasnext(i)) {
         int err;
-        
-        err = startup(ths[i], &pool->sync, prio + i);
+
+        err = startup(ths ++, &pool->sync, (thrd_info_t *) diter_next(i));
         if (err != 0) {
             pool->status |= THRD_POOL_LIB_ERR;
             pool->err = err;
             thrd_destroy(pool);
             return -1;
         }
+
     }
+    dlist_iter_free(i);
 
     return 0;
 }
 
-void thrd_enable_switch (thrd_pool_t *pool)
+void thrd_start (thrd_pool_t *pool)
 {
     pthread_mutex_lock(&pool->sync.mux);
-    pool->status ^= THRD_POOL_ACTIVE;
-    pthread_mutex_unlock(&pool->sync.mux);
-
+    pool->status |= THRD_POOL_ACTIVE;
     pthread_cond_broadcast(&pool->sync.cond);
+    pthread_mutex_unlock(&pool->sync.mux);
+}
+
+void thrd_pause (thrd_pool_t *pool)
+{
+    pthread_mutex_lock(&pool->sync.mux);
+    pool->status &= THRD_POOL_ACTIVE;
+    pthread_mutex_unlock(&pool->sync.mux);
 }
 
 void thrd_destroy (thrd_pool_t *pool)
 {
-    int i;
-    thrd_t **ths;
+    size_t n = pool->nthreads;
+    thrd_t *cur = pool->threads;
 
-    // TODO: remember to KILLALL
+    pthread_mutex_lock(&pool->sync.mux);
+    pool->status |= THRD_POOL_KILLALL;
+    pthread_mutex_unlock(&pool->sync.mux);
+
+    while (n--) {
+        pthread_join(cur->handler, NULL);
+    }
+    free(pool->threads);
 
     sync_destroy(&pool->sync);
-    i = pool->nthreads;
-    ths = pool->threads;
-    while (i --) {
-        if (ths[i]->status & THRD_INITIALIZED) {
-            // TODO: wait for it, than destroy
-        }
-    }
-    free(ths);
 }
 
 const char * thrd_strerr (thrd_pool_t *pool)
