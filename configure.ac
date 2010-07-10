@@ -16,9 +16,13 @@ AC_ARG_ENABLE([debug],
 
 # Checks for header files.
 AC_CHECK_HEADER([alsa/asoundlib.h], [],
-                [AC_MSG_ERROR(libasound2 headers not found.)])
+                [AC_MSG_ERROR([Please install libasound2 headers.])])
+AC_CHECK_HEADER([dacav/dacav.h], [],
+                [AC_MSG_ERROR([Please install libdacav])])
 
 # Checks for libraries.
+AC_CHECK_LIB([dacav], [dlist_sort], [],
+             [AC_MSG_ERROR([libdacav version required: >= 0.3.2])])
 
 # Checks for typedefs, structures, and compiler characteristics.
 
