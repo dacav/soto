@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <dacav/dacav.h>
 #include <unistd.h>
-#include <alloca.h>
 #include <sched.h>
 
 #include "headers/options.h"
