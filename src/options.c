@@ -202,13 +202,6 @@ int to_thrdinfo (const char *arg, opts_thrd_t *thr)
     return 0;
 }
 
-static
-int cmp_period (const opts_thrd_t *t0, const opts_thrd_t *t1)
-{
-    /* Smaller period = greater priority */
-    return t1->period - t0->period;
-}
-
 extern char *optarg;
 
 int opts_parse (opts_t *so, int argc, char * const argv[])
@@ -290,7 +283,6 @@ int opts_parse (opts_t *so, int argc, char * const argv[])
         notify_error(argv[0], "at lest one thread needed");
         return -1;
     }
-    so->threads = dlist_sort(so->threads, (dcmp_func_t) cmp_period);
     return 0;
 }
 

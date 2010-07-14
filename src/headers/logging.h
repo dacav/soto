@@ -12,8 +12,8 @@ extern "C" {
 #define DEBUG_FMT(fmt, ...) \
         fprintf(stderr, "[%08X] " fmt "\n", (unsigned) pthread_self(), __VA_ARGS__)
 #else
-#define DEBUG_MSG
-#define DEBUG_FMT
+#define DEBUG_MSG(str)
+#define DEBUG_FMT(fmt, ...)
 #endif
 
 #define LOG_MSG(str) \

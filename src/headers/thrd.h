@@ -7,14 +7,11 @@ extern "C" {
 #include <stdint.h>
 #include <pthread.h>
 #include <dacav/dacav.h>
+#include <time.h>
 
 #include "headers/logging.h"
 
-typedef struct {
-    pthread_mutex_t mux;        /**< Sync mutex */
-    pthread_cond_t cond;
-    volatile uint8_t * ctrl;
-} thrd_sync_t;
+typedef int (* callback_t) (void *context);
 
 /** User definition for the thread. */
 typedef struct {
@@ -24,35 +21,56 @@ typedef struct {
      * @param context The specified user data;
      * @return zero in order to kill the thread; non-zero otherwise.
      */
-    int (* callback) (void *context);
+    callback_t callback;
 
-    void *context;              /**< User defined context for the callback */
+    /** User defined context for the callback */
+    void *context;
+
+    /** The user chan choose how to set the priority value.
+     *
+     * Basing on this flag we have a different interpretation for
+     * thrd_info_t::priority.
+     *
+     * If thrd_info_t::prio_type is THRD_PRIO_EXPL then the provided
+     * thread assignment will be used.
+     *
+     * If thrd_info_t::prio_type is THRD_PRIO_RM instead, the provided
+     * thread will be computed basing on the period, which will be
+     * compared with other THRD_PRIO_RM threads.
+     *
+     */
+    enum {
+        THRD_PRIO_RM,           /**< Priority assigned as Rate Monotonic. */
+        THRD_PRIO_EXPL          /**< Explicitly setted priority. */
+    } prio_type;
+
     int priority;               /**< Thread's priority */
+    struct timespec period;     /**< Thread's period */
+    struct timespec delay;      /**< Thread's startup delay */
 
 } thrd_info_t;
 
 typedef struct {
     pthread_t handler;          /**< Handler of the thread. */
-    thrd_sync_t *sync;          /**< Backlink to synchronization
-                                 *   structure. */
     uint8_t status;             /**< Status flags. */
-    thrd_info_t *info;          /**< User defined thread info. */
+    thrd_info_t info;           /**< User defined thread info. */
 } thrd_t; 
 
 typedef struct {
-    thrd_t * threads;           /**< Sampling threads data. */
+    dlist_t *threads;           /**< List of thrd_t objects. */
     size_t nthreads;            /**< Number of sampling threads. */
 
-    thrd_sync_t sync;
     uint8_t status;             /**< Status flags */
     int err;                    /**< Stores error codes. */
+    int minprio;                /**< Minimum priority */
 } thrd_pool_t;
 
-int thrd_init (thrd_pool_t *pool, dlist_t *threads, size_t nthreads);
-
+void thrd_init (thrd_pool_t *pool, int minprio);
 void thrd_destroy (thrd_pool_t *pool);
 
-void thrd_start (thrd_pool_t *pool);
+int thrd_add (thrd_pool_t *pool, thrd_info_t * new_thrd);
+int thrd_start (thrd_pool_t *pool);
+void thrd_stop (thrd_pool_t *pool);
 
 const char * thrd_strerr (thrd_pool_t *pool);
 

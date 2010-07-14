@@ -3,73 +3,43 @@
 #include <dacav/dacav.h>
 #include <unistd.h>
 #include <sched.h>
+#include <assert.h>
 
 #include "headers/options.h"
 #include "headers/thrd.h"
 
-static
-int f (opts_thrd_t *o)
-{
-    uint64_t n = o->period;
-    while (n--) {
-        DEBUG_FMT("Countdown %d", (int)n);
-    }
-    DEBUG_MSG("End of the story");
-
-    return 0;
-}
-
-static
-dlist_t * build_thread_list (dlist_t *opts_thrd, int minprio)
-{
-    diter_t *i;
-    dlist_t *ret = dlist_new();
-
-    i = dlist_iter_new(&opts_thrd);
-    while (diter_hasnext(i)) {
-        thrd_info_t *info;
-
-        assert(info = malloc(sizeof(thrd_info_t)));
-        info->priority = minprio ++;
-        info->context = diter_next(i);
-        info->callback = (int (*) (void *))f;
-        ret = dlist_append(ret, (void *)info);
-    }
-    dlist_iter_free(i);
-
-    return ret;
-}
-
 int main (int argc, char ** argv)
 {
-    opts_t opts;
     thrd_pool_t pool;
-    dlist_t *threads;
+    thrd_info_t info;
 
-    if (opts_parse(&opts, argc, argv)) {
-        exit(EXIT_FAILURE);
+    thrd_init(&pool, 17);
+
+    info.period.tv_nsec = 0ULL;
+    info.prio_type = THRD_PRIO_RM;
+    info.delay.tv_nsec = 0ULL;
+    info.delay.tv_sec = 2ULL;
+
+    info.period.tv_sec = 3;
+    assert(thrd_add(&pool, &info) == 0);
+    info.period.tv_sec = 1;
+    assert(thrd_add(&pool, &info) == 0);
+    info.period.tv_sec = 5;
+    assert(thrd_add(&pool, &info) == 0);
+
+    info.prio_type = THRD_PRIO_EXPL;
+    info.period.tv_sec = 0L;
+
+    info.priority = 12;
+    assert(thrd_add(&pool, &info) == 0);
+    info.priority = 18;
+    assert(thrd_add(&pool, &info) == 0);
+    info.priority = 20;
+    assert(thrd_add(&pool, &info) == 0);
+
+    if (thrd_start(&pool)) {
+        DEBUG_FMT("%s", thrd_strerr(&pool));
     }
-
-    threads = build_thread_list(opts.threads, opts.minprio);
-
-    DEBUG_MSG("Start");
-    if (thrd_init(&pool, threads, opts.nthreads) == -1) {
-        LOG_FMT("Shitstorm happened: %s", thrd_strerr(&pool));
-        exit(EXIT_FAILURE);
-    }
-    DEBUG_MSG("Everything ready... now sleeping for a while");
-
-    sleep(1);
-
-    DEBUG_MSG("GO!");
-    thrd_start(&pool);
-
-    sleep(3);
-    //sched_yield();
 
     thrd_destroy(&pool);
-    dlist_free(threads, free);
-    opts_destroy(&opts);
-
-    exit(EXIT_SUCCESS);
 }
