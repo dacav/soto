@@ -1,4 +1,5 @@
 #include "headers/thrd.h"
+#include "headers/rtutils.h"
 
 #include <sched.h>
 #include <error.h>
@@ -8,8 +9,6 @@
 #include <string.h>
 #include <signal.h>
 #include <unistd.h>
-
-#define SECOND_NS 1000000000UL
 
 /* Flags for thrd_t::status */
 #define THRD_ALIVE          1 << 0
@@ -32,40 +31,28 @@
 #define THRD_POOL_CONDITION \
     ( THRD_POOL_ACTIVE | THRD_POOL_KILLALL )
 
-static inline
-void delay_activation (const struct timespec *delay)
-{
-    /* TODO add remain? */
-    assert(clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME,
-                           delay, NULL) == 0);
-}
 
 static
 void * thread_routine (void * arg)
 {
     thrd_t *thrd = (thrd_t *)arg;
+    struct timespec next_act;
 
-    DEBUG_FMT("Thread ready, starting at {%u,%lu}\n",
-              (unsigned) thrd->info.delay.tv_sec,
-              thrd->info.delay.tv_nsec);
-    delay_activation(&thrd->info.delay);
+    DEBUG_TIMESPEC("Thread will start at:", thrd->info.delay);
+    rtutils_wait(&thrd->info.delay);
+
+    /* Periodic loop: at each cycle the next absoute activation time is
+     * computed. */
+    rtutils_get_now(&next_act);
+    for (;;) {
+        DEBUG_TIMESPEC("Execution!", next_act);
+        rtutils_time_increment(&next_act, &thrd->info.period);
+
+        //thrd->info.callback(thrd->info.context);
+        rtutils_wait(&next_act);
+    }
 
     pthread_exit(NULL);
-}
-
-/* Make absolute a certain time delay by adding some 'current time' */
-static inline
-void make_absolute (struct timespec *delay, const struct timespec *now)
-{
-    long nano;
-
-    delay->tv_sec += now->tv_sec;
-    nano = now->tv_nsec + delay->tv_nsec;
-    if (nano > SECOND_NS) {
-        delay->tv_sec ++;
-        nano -= SECOND_NS;
-    }
-    delay->tv_nsec = nano;
 }
 
 static
@@ -74,10 +61,13 @@ int startup(thrd_t *thrd, struct timespec *enabtime)
     pthread_attr_t attr;
     int err;
     struct sched_param param = {
-        .sched_priority = thrd->info.priority
+        .sched_priority = thrd->priority
     };
 
-    make_absolute(&thrd->info.delay, enabtime);
+    DEBUG_TIMESPEC("Activating thread with period", thrd->info.period);
+
+    /* Make the activation wait absolute */
+    rtutils_time_increment(&thrd->info.delay, enabtime);
 
     /* Setting thread as real-time, scheduled as FIFO and with the given
      * priority. */
@@ -90,9 +80,6 @@ int startup(thrd_t *thrd, struct timespec *enabtime)
                          (void *) thrd);
     pthread_attr_destroy(&attr);
     if (err != 0) return err;
-
-    DEBUG_FMT("Activated thread with id [%08X], priority [%d]",
-              (unsigned) thrd->handler, param.sched_priority);
 
     thrd->status |= THRD_ALIVE;
     return 0;
@@ -115,87 +102,37 @@ int thrd_add (thrd_pool_t *pool, thrd_info_t * new_thrd)
     return 0;
 }
 
-/* Comparsion between timespec structures, allows to determine which
- * period is greater
- */
-static
-int timespec_cmp (const struct timespec *s0, const struct timespec *s1)
-{
-    if (s0->tv_sec == s1->tv_sec)
-        return s0->tv_nsec > s1->tv_nsec ? -1 : 1;
-    return s0->tv_sec > s1->tv_sec ? -1 : 1;
-}
-
-static inline
-int timespec_iszero (const struct timespec *s)
-{
-    return s->tv_sec == 0 && s->tv_nsec == 0;
-}
-
-/* Comparsion between threads, allows to determine which has the greatest
- * priority.
+/* Comparsion between threads, allows to determine which has the smallest
+ * period.
  */
 static
 int prio_cmp (const thrd_t *t0, const thrd_t *t1)
 {
-    int types = 0;
-
-    if (t0->info.prio_type == THRD_PRIO_EXPL) {
-        types |= 1 << 0;
-    }
-    if (t0->info.prio_type == THRD_PRIO_EXPL) {
-        types |= 1 << 1;
-    }
-
-    switch (types) {
-        case 0:     // both THRD_PRIO_RM
-            return timespec_cmp(&t0->info.period,
-                                &t1->info.period);
-        case 1:     // only t0 THRD_PRIO_EXPL
-            return -1;
-        case 2:     // only t1 THRD_PRIO_EXPL
-            return 1;
-        case 3:     // both THRD_PRIO_EXPL
-            return t0->info.priority - t1->info.priority;
-    }
-    abort();        // impossible things sometimes happens.
+    return rtutils_time_cmp(&t0->info.period, &t1->info.period);
 }
 
 static
 int set_rm_priorities (dlist_t **threads, int minprio)
 {
     diter_t *i;
-    dlist_t *ts = *threads;
+    dlist_t *ts;
 
-    /* First sorting: RM threads ordered by period, while explicit
-     * priority threads are considered with lower priority; */
-    ts = dlist_sort(ts, (dcmp_func_t) prio_cmp);
-
-    /* Now we can compute priority basing on period for RM threads, and
-     * transform them into explicit-priority threads; */
+    /* Sort by period */
+    ts = *threads = dlist_sort(*threads, (dcmp_func_t) prio_cmp);
     i = dlist_iter_new(&ts);
 
     while (diter_hasnext(i)) {
         thrd_t *t;
 
         t = (thrd_t *) diter_next(i);
-
-        if (t->info.prio_type == THRD_PRIO_EXPL) {
-            break;
-        }
-        if (timespec_iszero(&t->info.period)) {
+        if (rtutils_time_iszero(&t->info.period)) {
             /* Null period? Shame on you! */
             dlist_iter_free(i);
             return -1;
         }
-        t->info.prio_type = THRD_PRIO_EXPL;
-        t->info.priority = minprio ++;
+        t->priority = minprio ++;
     }
     dlist_iter_free(i);
-
-    /* Second sorting will build the correct priority assignment. */
-    *threads = dlist_sort(ts, (dcmp_func_t) prio_cmp);
-
     return 0;
 }
 
@@ -216,7 +153,7 @@ int thrd_start (thrd_pool_t *pool)
     pool->status |= THRD_POOL_ACTIVE;
     i = dlist_iter_new(&pool->threads);
 
-    clock_gettime(CLOCK_MONOTONIC, &now);
+    rtutils_get_now(&now);
     while (diter_hasnext(i)) {
         err = startup((thrd_t *) diter_next(i), &now);
 

@@ -11,6 +11,14 @@ extern "C" {
         fprintf(stderr, "[%08X] " str "\n", (unsigned) pthread_self())
 #define DEBUG_FMT(fmt, ...) \
         fprintf(stderr, "[%08X] " fmt "\n", (unsigned) pthread_self(), __VA_ARGS__)
+#define DEBUG_TIMESPEC(str, remain)                                 \
+    do if ((remain).tv_sec != 0 || (remain).tv_nsec != 0) {         \
+        fprintf(stderr, "[%08X] " str " [sec=%u, nsec=%lu]\n",      \
+                (unsigned) pthread_self(),                          \
+                (unsigned) ((remain).tv_sec),                       \
+                (remain).tv_nsec);                                  \
+    } while (0)
+
 #else
 #define DEBUG_MSG(str)
 #define DEBUG_FMT(fmt, ...)

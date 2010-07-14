@@ -16,11 +16,10 @@ void rtutils_get_now (struct timespec *n)
 }
 
 static inline
-void rtutils_wait (const struct timespec *delay,
-                    struct timespec *remain)
+void rtutils_wait (const struct timespec *delay)
 {
     assert(clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME,
-                           delay, remain) == 0);
+                           delay, NULL) == 0);
 }
 
 /* Make absolute a certain time wait by adding some 'current time' */

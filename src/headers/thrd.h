@@ -22,35 +22,15 @@ typedef struct {
      * @return zero in order to kill the thread; non-zero otherwise.
      */
     callback_t callback;
+	void *context;
 
-    /** User defined context for the callback */
-    void *context;
-
-    /** The user chan choose how to set the priority value.
-     *
-     * Basing on this flag we have a different interpretation for
-     * thrd_info_t::priority.
-     *
-     * If thrd_info_t::prio_type is THRD_PRIO_EXPL then the provided
-     * thread assignment will be used.
-     *
-     * If thrd_info_t::prio_type is THRD_PRIO_RM instead, the provided
-     * thread will be computed basing on the period, which will be
-     * compared with other THRD_PRIO_RM threads.
-     *
-     */
-    enum {
-        THRD_PRIO_RM,           /**< Priority assigned as Rate Monotonic. */
-        THRD_PRIO_EXPL          /**< Explicitly setted priority. */
-    } prio_type;
-
-    int priority;               /**< Thread's priority */
     struct timespec period;     /**< Thread's period */
     struct timespec delay;      /**< Thread's startup delay */
 
 } thrd_info_t;
 
 typedef struct {
+    int priority;               /**< Thread's priority */
     pthread_t handler;          /**< Handler of the thread. */
     uint8_t status;             /**< Status flags. */
     thrd_info_t info;           /**< User defined thread info. */
