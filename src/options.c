@@ -184,10 +184,9 @@ void set_defaults (opts_t *so)
     so->rate = 44100;
     so->format = SND_PCM_FORMAT_U16_LE;
     so->minprio = sched_get_priority_min(SCHED_FIFO);
-    so->threads = dlist_new();
-    so->nthreads = 0;
 }
 
+#if 0
 static
 int to_thrdinfo (const char *arg, opts_thrd_t *thr)
 {
@@ -201,14 +200,15 @@ int to_thrdinfo (const char *arg, opts_thrd_t *thr)
     thr->period = p;
     return 0;
 }
+#endif
 
 extern char *optarg;
 
 int opts_parse (opts_t *so, int argc, char * const argv[])
 {
     int opt;
-    opts_thrd_t thdi;
-    void *aux_thdi;
+    //opts_thrd_t thdi;
+    //void *aux_thdi;
 
     set_defaults(so);
     while ((opt = getopt_long(argc, argv, optstring, longopts, NULL))
@@ -261,6 +261,7 @@ int opts_parse (opts_t *so, int argc, char * const argv[])
                         return -1;
                 }
                 break;
+            /*
             case 't':
                 if (to_thrdinfo(optarg, &thdi) == -1) {
                     notify_error(argv[0], "invalid thread info: '%s'",
@@ -273,21 +274,24 @@ int opts_parse (opts_t *so, int argc, char * const argv[])
                 so->threads = dlist_append(so->threads, aux_thdi);
                 so->nthreads ++;
                 break;
+            */
             case 'h':
             case '?':
                 print_help(argv[0]);
                 return -1;
         }
     }
+    /*
     if (so->nthreads == 0) {
         notify_error(argv[0], "at lest one thread needed");
         return -1;
     }
+    */
     return 0;
 }
 
 void opts_destroy (opts_t *opts)
 {
-    dlist_free(opts->threads, free);
+    //dlist_free(opts->threads, free);
 }
 

@@ -19,11 +19,13 @@ AC_ARG_ENABLE([debug],
 AC_CHECK_HEADER([alsa/asoundlib.h], [],
                 [AC_MSG_ERROR([Please install libasound2 headers.])])
 AC_CHECK_HEADER([dacav/dacav.h], [],
-                [AC_MSG_ERROR([Please install libdacav])])
+                [AC_MSG_ERROR([Please install libdacav (>= 0.3.3)])])
 
 # Checks for libraries.
 AC_CHECK_LIB([dacav], [dlist_sort], [],
-             [AC_MSG_ERROR([libdacav version required: >= 0.3.2])])
+             [AC_MSG_ERROR([libdacav version required: >= 0.3.3])])
+AC_CHECK_LIB([thdacav], [thdqueue_new], [],
+             [AC_MSG_ERROR([libdacav version required: >= 0.3.3])])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_TYPE_SIZE_T

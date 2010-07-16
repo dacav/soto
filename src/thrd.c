@@ -19,10 +19,6 @@
 #define THRD_POOL_KILLALL   1 << 2 /**< All threads shutting down */
 #define THRD_POOL_SORTED    1 << 3 /**< The pool threads are sorted */
 
-#define THRD_ERR_LIBRARY    1 << 0 /**< Library error */
-#define THRD_ERR_CLOSED     1 << 1 /**< Added thread on a running pool */
-#define THRD_ERR_NULLPER    1 << 2 /**< Declared null period */
-
 /* All error OR-ed, for cleanup, used by strerr */
 #define THRD_ERR_ALL \
     ( THRD_ERR_LIBRARY | THRD_ERR_CLOSED | THRD_ERR_NULLPER )
@@ -31,6 +27,12 @@
 #define THRD_POOL_CONDITION \
     ( THRD_POOL_ACTIVE | THRD_POOL_KILLALL )
 
+typedef struct {
+    int priority;               /* Thread's priority */
+    pthread_t handler;          /* Handler of the thread. */
+    uint8_t status;             /* Status flags. */
+    thrd_info_t info;           /* User defined thread info. */
+} thrd_t; 
 
 static
 void * thread_routine (void * arg)
@@ -142,6 +144,8 @@ int thrd_start (thrd_pool_t *pool)
     int err;
     struct timespec now;
 
+    assert(dlist_empty(pool->threads));
+
     if ((pool->status & THRD_POOL_SORTED) == 0) {
         /* We need to bulid the priority set the first time! */
         if (set_rm_priorities(&pool->threads, pool->minprio) == -1) {
@@ -170,21 +174,27 @@ int thrd_start (thrd_pool_t *pool)
     return 0;
 }
 
-const char * thrd_strerr (thrd_pool_t *pool)
+const char * thrd_strerr (thrd_pool_t *pool, thrd_err_t err)
 {
-    uint8_t status = pool->status;
-    pool->status &= ~THRD_ERR_ALL;
-
-    if (status & THRD_ERR_LIBRARY)
-        return strerror(pool->err);
-    if (status & THRD_ERR_CLOSED)
-        return "Cannot add a thread on a running pool";
-    if (status & THRD_ERR_NULLPER)
-        return "Null period for RM thread";
+    switch (err) {
+        case THRD_ERR_LIBRARY:
+            return strerror(pool->err);
+        case THRD_ERR_CLOSED:
+            return "Cannot add a thread on a running pool";
+        case THRD_ERR_NULLPER:
+            return "Null period for RM thread";
+    }
     return "Unknown";
 }
 
-void thrd_init (thrd_pool_t *pool, int minprio)
+thrd_err_t thrd_interr (thrd_pool_t *pool)
+{
+    uint8_t status = pool->status;
+    pool->status &= ~THRD_ERR_ALL;
+    return status & THRD_ERR_ALL;
+}
+
+void thrd_init (thrd_pool_t *pool, unsigned minprio)
 {
     memset((void *) pool, 0, sizeof(thrd_pool_t));
     pool->minprio = minprio;

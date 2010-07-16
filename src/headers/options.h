@@ -1,3 +1,30 @@
+/*
+ * Copyright 2010 Giovanni Simoni
+ *
+ * This file is part of Soto.
+ *
+ * Soto is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Soto is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Soto.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
+
+/*
+
+   This module provieds an options parsing mechanism based on getopt.
+
+ */
+
+
 #ifndef __defined_headers_options_h
 #define __defined_headers_options_h
 #ifdef __cplusplus
@@ -10,28 +37,29 @@ extern "C" {
 
 #include "headers/thrd.h"
 
-typedef struct {
-    uint64_t period;        /**< Length of the period TODO decide measure
-                             *   unit */
-} opts_thrd_t;
-
 /** Option keeping structure.
  *
  * @note The field opts_t::minpio will be added to the value returned by
  *       the sched_get_priority_min() system call.
  */
 typedef struct {
+
+    /* ALSA related options */
+
     const char *device;         /**< PCM device */
     enum {
         MONO = 1, STEREO = 2
     } mode;                     /**< Number of input channels */
     unsigned rate;              /**< Sample rate; */
     snd_pcm_format_t format;    /**< Sampling input format; */
-    int minprio;                /**< Priority for the thread having the
-                                     longest sampling period; */
 
-    dlist_t * threads;          /**< Sampling threads info. */
-    size_t nthreads;            /**< Number of sampling threads */
+    /* Threading related options */
+
+    /** Minimum priority value to be used. This will be added to the
+     * result of the sched_get_priority_min() syscall.
+     */
+    int minprio;
+
 } opts_t;
 
 /** Parse the command line options
@@ -43,6 +71,10 @@ typedef struct {
  */
 int opts_parse (opts_t *opts, int argc, char * const argv[]);
 
+/** Destroy command line options structure.
+ *
+ * @param opts The opts_t structure to be freed.
+ */
 void opts_destroy (opts_t *opts);
 
 #ifdef __cplusplus
