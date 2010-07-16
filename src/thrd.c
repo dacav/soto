@@ -28,10 +28,14 @@
     ( THRD_POOL_ACTIVE | THRD_POOL_KILLALL )
 
 typedef struct {
+
     int priority;               /* Thread's priority */
     pthread_t handler;          /* Handler of the thread. */
     uint8_t status;             /* Status flags. */
-    thrd_info_t info;           /* User defined thread info. */
+    const thrd_info_t info;     /* User defined thread info. */
+
+    struct timespec start;      /* Pool start time, used for delay */
+
 } thrd_t; 
 
 static
@@ -40,8 +44,8 @@ void * thread_routine (void * arg)
     thrd_t *thrd = (thrd_t *)arg;
     struct timespec next_act;
 
-    DEBUG_TIMESPEC("Thread will start at:", thrd->info.delay);
-    rtutils_wait(&thrd->info.delay);
+    DEBUG_TIMESPEC("Thread will start at:", thrd->start);
+    rtutils_wait(&thrd->start);
 
     /* Periodic loop: at each cycle the next absoute activation time is
      * computed. */
@@ -50,7 +54,10 @@ void * thread_routine (void * arg)
         DEBUG_TIMESPEC("Execution!", next_act);
         rtutils_time_increment(&next_act, &thrd->info.period);
 
-        //thrd->info.callback(thrd->info.context);
+        if (thrd->info.callback(thrd->info.context) == 0) {
+            /* Thread required to shut down */
+            pthread_exit(NULL);
+        }
         rtutils_wait(&next_act);
     }
 
@@ -68,8 +75,12 @@ int startup(thrd_t *thrd, struct timespec *enabtime)
 
     DEBUG_TIMESPEC("Activating thread with period", thrd->info.period);
 
-    /* Make the activation wait absolute */
-    rtutils_time_increment(&thrd->info.delay, enabtime);
+    /* Build activation time for this call of start: we make a copy of the
+     * enable time and increment it with thread specification delay.
+     */
+    memcpy((void *) &thrd->start, (const void *)enabtime,
+           sizeof(struct timespec));
+    rtutils_time_increment(&thrd->start, &thrd->info.delay);
 
     /* Setting thread as real-time, scheduled as FIFO and with the given
      * priority. */
@@ -87,7 +98,7 @@ int startup(thrd_t *thrd, struct timespec *enabtime)
     return 0;
 }
 
-int thrd_add (thrd_pool_t *pool, thrd_info_t * new_thrd)
+int thrd_add (thrd_pool_t *pool, const thrd_info_t * new_thrd)
 {
     thrd_t *item;
 
@@ -98,7 +109,8 @@ int thrd_add (thrd_pool_t *pool, thrd_info_t * new_thrd)
 
     assert(item = (thrd_t *) malloc(sizeof(thrd_t)));
     item->status = THRD_INITIALIZED;
-    memcpy((void *)&item->info, (const void *)new_thrd, sizeof(thrd_info_t));
+    memcpy((void *)&item->info, (const void *)new_thrd,
+           sizeof(thrd_info_t));
     pool->threads = dlist_append(pool->threads, (void *)item);
 
     return 0;
@@ -137,6 +149,14 @@ int set_rm_priorities (dlist_t **threads, int minprio)
     dlist_iter_free(i);
     return 0;
 }
+
+/* TODO Funny future implementation, but not implemented. */
+#if 0
+void thrd_stop (thrd_pool_t *pool)
+{
+
+}
+#endif
 
 int thrd_start (thrd_pool_t *pool)
 {

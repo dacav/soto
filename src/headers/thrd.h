@@ -105,13 +105,10 @@ void thrd_destroy (thrd_pool_t *pool);
  * @return 0 on success, -1 if the pool has been already started once by
  *         calling thrd_start.
  */
-int thrd_add (thrd_pool_t *pool, thrd_info_t * new_thrd);
+int thrd_add (thrd_pool_t *pool, const thrd_info_t * new_thrd);
 
 /** Start the threads */
 int thrd_start (thrd_pool_t *pool);
-
-/** Stop the threads */
-void thrd_stop (thrd_pool_t *pool);
 
 /** Get information on the error.
  *
