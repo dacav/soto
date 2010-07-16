@@ -84,11 +84,15 @@ int startup(thrd_t *thrd, struct timespec *enabtime)
 
     /* Setting thread as real-time, scheduled as FIFO and with the given
      * priority. */
-    assert(pthread_attr_init(&attr) == 0);
-    assert(pthread_attr_setschedpolicy(&attr, SCHED_FIFO) == 0);
-    assert(pthread_attr_setschedparam(&attr, &param) == 0);
-    assert(pthread_attr_setinheritsched(&attr,
-           PTHREAD_EXPLICIT_SCHED) == 0);
+    err = pthread_attr_init(&attr);
+    assert(err);
+    err = pthread_attr_setschedpolicy(&attr, SCHED_FIFO);
+    assert(err);
+    err = pthread_attr_setschedparam(&attr, &param);
+    assert(err);
+    err = pthread_attr_setinheritsched(&attr, PTHREAD_EXPLICIT_SCHED);
+    assert(err);
+
     err = pthread_create(&thrd->handler, &attr, thread_routine,
                          (void *) thrd);
     pthread_attr_destroy(&attr);
@@ -107,7 +111,8 @@ int thrd_add (thrd_pool_t *pool, const thrd_info_t * new_thrd)
         return -1;
     }
 
-    assert(item = (thrd_t *) malloc(sizeof(thrd_t)));
+    item = (thrd_t *) malloc(sizeof(thrd_t));
+    assert(item);
     item->status = THRD_INITIALIZED;
     memcpy((void *)&item->info, (const void *)new_thrd,
            sizeof(thrd_info_t));
