@@ -32,6 +32,7 @@
 extern "C" {
 #endif
 
+#include <pthread.h>
 #include "headers/config.h"
 
 #ifdef DEBUG_ENABLED

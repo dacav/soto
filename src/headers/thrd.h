@@ -53,7 +53,8 @@ typedef struct {
     /** Callback of the thread
      *
      * @param context The specified user data;
-     * @return zero in order to kill the thread; non-zero otherwise.
+     * @return zero in order to keep the thread running. Any other value
+     *         stops the periodic execution.
      */
     callback_t callback;
 	void *context;
@@ -76,7 +77,8 @@ typedef struct {
 typedef enum {
     THRD_ERR_LIBRARY  = 1 << 0,     /**< Library error */
     THRD_ERR_CLOSED   = 1 << 1,     /**< Added thread on a running pool */
-    THRD_ERR_NULLPER  = 1 << 2      /**< Declared null period */
+    THRD_ERR_NULLPER  = 1 << 2,     /**< Declared null period */
+    THRD_ERR_EMPTY    = 1 << 3      /**< No thread subscribed */
 } thrd_err_t;
 
 /** Initialize the pool
@@ -107,7 +109,18 @@ void thrd_destroy (thrd_pool_t *pool);
  */
 int thrd_add (thrd_pool_t *pool, const thrd_info_t * new_thrd);
 
-/** Start the threads */
+/** Start the threads
+ *
+ * This call enables the thread. Before calling it you must add at least
+ * one thread the pool. The call needs the appropriate level of privilege,
+ * otherwise it shall fail miserably.
+ *
+ * @see thrd_interr
+ * @see thrd_strerr
+ *
+ * @param pool The pool to be started;
+ * @return 0 on success, not 0 on error.
+ */
 int thrd_start (thrd_pool_t *pool);
 
 /** Get information on the error.
@@ -121,7 +134,7 @@ int thrd_start (thrd_pool_t *pool);
  * @param pool The pool for which the last call returned error;
  * @return The error.
  */
-thrd_err_t   thrd_interr (thrd_pool_t *pool);
+thrd_err_t thrd_interr (thrd_pool_t *pool);
 
 /** Get error description string.
  *

@@ -31,11 +31,13 @@
 extern "C" {
 #endif
 
+#include "headers/alsasample.h"
+
 #include <alsa/asoundlib.h>
 #include <dacav/dacav.h>
-#include <stdint.h>
 
-#include "headers/thrd.h"
+#include <stdint.h>
+#include <time.h>
 
 /** Option keeping structure.
  *
@@ -48,10 +50,11 @@ typedef struct {
 
     const char *device;         /**< PCM device */
     enum {
-        MONO = 1, STEREO = 2
+        MONO, STEREO
     } mode;                     /**< Number of input channels */
     unsigned rate;              /**< Sample rate; */
-    snd_pcm_format_t format;    /**< Sampling input format; */
+    unsigned nsamp;             /**< Number of samples buffered */
+    samp_policy_t policy;
 
     /* Threading related options */
 
@@ -70,12 +73,6 @@ typedef struct {
  * @return 0 on success, non-zero on fail.
  */
 int opts_parse (opts_t *opts, int argc, char * const argv[]);
-
-/** Destroy command line options structure.
- *
- * @param opts The opts_t structure to be freed.
- */
-void opts_destroy (opts_t *opts);
 
 #ifdef __cplusplus
 }

@@ -33,8 +33,29 @@ extern "C" {
 
 #include <time.h>
 #include <assert.h>
+#include <stdint.h>
 
 #define SECOND_NS 1000000000UL
+
+/** Convert a 'struct timespec' into nanoseconds.
+ *
+ * @note 2^64 * 1e-9 = 18446744073.709553, so there's enough room for it
+ *
+ * @param n The time in sec + nsec;
+ * @return The time in nsec.
+ */
+static inline
+uint64_t rtutils_time2ns (const struct timespec *n)
+{
+    return n->tv_nsec + SECOND_NS * n->tv_sec;
+}
+
+/** Convert nanoseconds into 'struct timespec'
+ *
+ * @param n The time in nsec;
+ * @return The time in sec + nsec.
+ */
+struct timespec rtutils_ns2time (uint64_t ns);
 
 /** Current time on the monotonic clock
  *
