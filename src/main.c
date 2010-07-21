@@ -27,12 +27,12 @@
 #include <dacav/dacav.h>
 #include <thdacav/thdacav.h>
 
+#include <alsa/asoundlib.h>
+
 #include "headers/options.h"
 #include "headers/alsasample.h"
 #include "headers/thrd.h"
-
-#define STARTUP_DELAY_SEC  0
-#define STARTUP_DELAY_nSEC 500000
+#include "headers/sampthread.h"
 
 static
 int init_samp_by_opts (samp_t *samp, opts_t *opts)
@@ -48,28 +48,29 @@ int init_samp_by_opts (samp_t *samp, opts_t *opts)
 }
 
 static
-int sampling_thread (void *arg)
+void dump_buffer (samp_frame_t *buf, snd_pcm_uframes_t n)
 {
-    static int test = 10;
-    printf("HELLO!\n");
-    return test -- == 0 ? 1 : 0;
+    samp_frame_t *cursor = buf;
+
+    while (n--) {
+        fprintf(stdout, "left=%i right=%i\n", cursor->ch0, cursor->ch1);
+        cursor ++;
+    }
+    DEBUG_FMT("Buffer [%p] completed... next", (void *) buf);
 }
 
 static
-int create_sampling_thread (thrd_pool_t *pool, opts_t *opts, const samp_t *samp)
+void read_data (thdqueue_t *q, snd_pcm_uframes_t nframes)
 {
-    thrd_info_t thi;
+    for (;;) {
+        samp_frame_t *buf;
 
-    thi.callback = sampling_thread;
-    thi.context = (void *)samp;
-
-    thi.delay.tv_sec = STARTUP_DELAY_SEC;
-    thi.delay.tv_nsec = STARTUP_DELAY_nSEC;
-
-    memcpy((void *) &thi.period, (const void *) samp_get_period(samp),
-            sizeof(struct timespec));
-
-    return thrd_add(pool, &thi);
+        if (thdqueue_extract(q, (void **) &buf) == THDQUEUE_ENDDATA) {
+            return;
+        }
+        dump_buffer (buf, nframes);
+        free (buf);
+    }
 }
 
 int main (int argc, char ** argv)
@@ -77,6 +78,7 @@ int main (int argc, char ** argv)
     opts_t opts;
     samp_t sampler;
     thrd_pool_t pool;
+    thdqueue_t *queue;
 
     if (opts_parse(&opts, argc, argv)) {
         exit(EXIT_FAILURE);
@@ -85,17 +87,22 @@ int main (int argc, char ** argv)
 
     if (init_samp_by_opts(&sampler, &opts)) {
         samp_err_t err = samp_interr(&sampler);
+
         fprintf(stderr, "Sampler init: %s\n", samp_strerr(&sampler, err));
         exit(EXIT_FAILURE);
     }
 
     /* Populate the thread pool */
-    create_sampling_thread(&pool, &opts, &sampler);
+    queue = thdqueue_new();
+    sampthread_create(&pool, &sampler, queue);
     if (thrd_start(&pool)) {
         thrd_err_t err = thrd_interr(&pool);
+
         fprintf(stderr, "Pool init: %s\n", thrd_strerr(&pool, err));
         exit(EXIT_FAILURE);
     }
+
+    read_data(queue, samp_get_nframes(&sampler));
 
     thrd_destroy(&pool);
     samp_destroy(&sampler);

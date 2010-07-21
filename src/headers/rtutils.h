@@ -36,6 +36,8 @@ extern "C" {
 #include <stdint.h>
 
 #define SECOND_NS 1000000000UL
+#define STARTUP_DELAY_SEC  0
+#define STARTUP_DELAY_nSEC 500000
 
 /** Convert a 'struct timespec' into nanoseconds.
  *

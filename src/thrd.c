@@ -64,6 +64,20 @@ void * thread_routine (void * arg)
 {
     thrd_t *thrd = (thrd_t *)arg;
     struct timespec next_act;
+    void *context;
+
+    context = thrd->info.context;
+
+    DEBUG_MSG("Initialization");
+    if (thrd->info.init) {
+        if (thrd->info.init(context)) {
+            DEBUG_MSG("Aborting execution");
+            if (thrd->info.destroy) {
+                thrd->info.destroy(context);
+            }
+            pthread_exit(NULL);
+        }
+    }
 
     DEBUG_TIMESPEC("Thread will start at:", thrd->start);
     rtutils_wait(&thrd->start);
@@ -75,9 +89,12 @@ void * thread_routine (void * arg)
         rtutils_time_increment(&next_act, &thrd->info.period);
         DEBUG_TIMESPEC("Executing. Next activation", next_act);
 
-        if (thrd->info.callback(thrd->info.context)) {
+        if (thrd->info.callback(context)) {
             /* Thread required to shut down */
-            DEBUG_MSG("Termination");
+            DEBUG_MSG("Termination by callback");
+            if (thrd->info.destroy) {
+                thrd->info.destroy(context);
+            }
             pthread_exit(NULL);
         }
         rtutils_wait(&next_act);
@@ -129,6 +146,8 @@ int thrd_add (thrd_pool_t *pool, const thrd_info_t * new_thrd)
     thrd_t *item;
 
     assert((pool->status & THRD_ERR_ALL) == 0);
+    assert(new_thrd->callback);
+    assert(! rtutils_time_iszero(&new_thrd->period));
 
     if (pool->status & THRD_POOL_ACTIVE) {
         pool->status |= THRD_ERR_CLOSED;
@@ -168,11 +187,6 @@ int set_rm_priorities (dlist_t **threads, int minprio)
         thrd_t *t;
 
         t = (thrd_t *) diter_next(i);
-        if (rtutils_time_iszero(&t->info.period)) {
-            /* Null period? Shame on you! */
-            dlist_iter_free(i);
-            return -1;
-        }
         t->priority = minprio ++;
     }
     dlist_iter_free(i);

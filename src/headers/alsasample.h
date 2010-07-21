@@ -44,19 +44,32 @@ typedef enum {
 typedef struct {
     snd_pcm_t *pcm;
 
-    void *buffer;
-    size_t nframes;
+    snd_pcm_uframes_t nframes;
     struct timespec period;
 
     uint8_t status;
     int err;
 } samp_t;
 
+/** Error type for sampling */
 typedef enum {
-    SAMP_ERR_LIBRARY  = 1 << 0,     /**< Library error */
-    SAMP_ERR_RATE     = 1 << 1,     /**< Rate has been modified */
-    SAMP_ERR_PERIOD   = 1 << 2,     /**< Period has been modified */
+    SAMP_ERR_LIBRARY  = 1 << 0,     /**< Library error; */
+    SAMP_ERR_RATE     = 1 << 1,     /**< Rate has been modified; */
+    SAMP_ERR_PERIOD   = 1 << 2,     /**< Period has been modified. */
 } samp_err_t;
+
+/** Data type for frames.
+ *
+ * @note Currently this project provides only sampling with format
+ *       SND_PCM_FORMAT_S16_LE with interleaved access. Further
+ *       modification with parametrized choice of format/interleving shall
+ *       for sure modify this structure.
+ *
+ */
+typedef struct {
+    uint16_t ch0;   /**< First channel; */
+    uint16_t ch1;   /**< Second channel. */
+} samp_frame_t;
 
 /** Constructor for the sampler.
  *
@@ -76,6 +89,22 @@ int samp_init (samp_t *s, const samp_info_t *spec, samp_policy_t accept);
  * @return The time between reads.
  */
 const struct timespec * samp_get_period (const samp_t *samp);
+
+/** Getter for the buffer size
+ *
+ * @see frame_t.
+ *
+ * @param samp The sampler;
+ * @return The buffer size in frames.
+ */
+snd_pcm_uframes_t samp_get_nframes (const samp_t *samp);
+
+/** Getter for the ALSA pcm.
+ *
+ * @param samp The sampler;
+ * @return The pcm.
+ */
+snd_pcm_t * samp_get_pcm (const samp_t *samp);
 
 /** Get information on the error.
  *
@@ -98,6 +127,10 @@ samp_err_t samp_interr (samp_t *s);
  */
 const char * samp_strerr (samp_t *s, samp_err_t err);
 
+/** Destroyer
+ *
+ * @s The sampler to be destroyed.
+ */
 void samp_destroy (samp_t *s);
 
 #ifdef __cplusplus

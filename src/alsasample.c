@@ -26,14 +26,9 @@
 #define SAMP_ERR_ALL \
     ( SAMP_ERR_LIBRARY | SAMP_ERR_RATE | SAMP_ERR_PERIOD )
 
-typedef struct {
-    uint16_t ch0;
-    uint16_t ch1;
-} frame_t;
-
 static
 int init_soundcard (snd_pcm_t *handle, const samp_info_t *spec, unsigned *rate,
-                    snd_pcm_uframes_t *bufsize)
+                    snd_pcm_uframes_t *nframes)
 {
     snd_pcm_hw_params_t *hwparams;
     int dir = 0, err;
@@ -59,7 +54,7 @@ int init_soundcard (snd_pcm_t *handle, const samp_info_t *spec, unsigned *rate,
     err = snd_pcm_hw_params_set_channels(handle, hwparams, spec->channels);
     if (err < 0) return err;
 
-    err = snd_pcm_hw_params_get_buffer_size_min(hwparams, bufsize);
+    err = snd_pcm_hw_params_get_buffer_size_min(hwparams, nframes);
     if (err < 0) return err;
 
     err = snd_pcm_hw_params(handle, hwparams);
@@ -80,10 +75,20 @@ const struct timespec * samp_get_period (const samp_t *samp)
     return &samp->period;
 }
 
+snd_pcm_uframes_t samp_get_nframes (const samp_t *samp)
+{
+    return samp->nframes;
+}
+
+snd_pcm_t * samp_get_pcm (const samp_t *samp)
+{
+    return samp->pcm;
+}
+
 int samp_init (samp_t *s, const samp_info_t *spec, samp_policy_t accept)
 {
     unsigned rate;
-    snd_pcm_uframes_t bufsize;
+    snd_pcm_uframes_t nframes;
     
     memset((void *)s, 0, sizeof(samp_t));
     s->period = build_period(spec);
@@ -94,7 +99,7 @@ int samp_init (samp_t *s, const samp_info_t *spec, samp_policy_t accept)
         s->status |= SAMP_ERR_LIBRARY;
         return -1;
     }
-    if ((s->err = init_soundcard(s->pcm, spec, &rate, &bufsize)) != 0) {
+    if ((s->err = init_soundcard(s->pcm, spec, &rate, &nframes)) != 0) {
         s->status |= SAMP_ERR_LIBRARY;
         return -1;
     }
@@ -102,10 +107,7 @@ int samp_init (samp_t *s, const samp_info_t *spec, samp_policy_t accept)
         s->status |= SAMP_ERR_RATE;
         return -1;
     }
-
-    s->buffer = malloc(sizeof(frame_t) * bufsize);
-    assert(s->buffer);
-    s->nframes = bufsize;
+    s->nframes = nframes;
 
     return 0;
 }
@@ -133,6 +135,5 @@ const char * samp_strerr (samp_t *s, samp_err_t err)
 void samp_destroy (samp_t *s)
 {
     snd_pcm_close(s->pcm);
-    free(s->buffer);
 }
 

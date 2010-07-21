@@ -42,6 +42,12 @@ extern "C" {
 
 #include "headers/logging.h"
 
+/** Callback of the thread
+*
+* @param context The specified user data;
+* @return zero in order to keep the thread running. Any other value
+*         stops the periodic execution.
+*/
 typedef int (* callback_t) (void *context);
 
 /** User definition for the thread.
@@ -49,14 +55,35 @@ typedef int (* callback_t) (void *context);
  * This is used as argument for the thrd_init function.
  */
 typedef struct {
-    
-    /** Callback of the thread
+
+    /** Called by the thread before starting cycling periodically. You may
+     * specify it as NULL.
+     *
+     * @param context The specified user data;
+     * @return zero in order to let the execution start. Any other value
+     *         aborts the execution.
+     */
+    callback_t init;        
+
+    /** Business logic of the thread. You must provide it.
      *
      * @param context The specified user data;
      * @return zero in order to keep the thread running. Any other value
      *         stops the periodic execution.
      */
     callback_t callback;
+    
+    /** Called by the thread before termination. You may specify it as
+     * NULL. 
+     *
+     * @param context The specified user data;
+     * @return Ignored.
+     */
+    callback_t destroy;
+
+    /** Context of thrd_info_t::init, thrd_info_t::callback and
+     *  thrd_info_t::final
+     */
 	void *context;
 
     struct timespec period;  /**< Thread's period */
