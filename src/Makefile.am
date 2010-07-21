@@ -2,7 +2,7 @@ AM_CFLAGS = -I./ -std=gnu99 -Wall -Werror -pthread
 bin_PROGRAMS = soto
 
 soto_SOURCES = main.c \
-               alsasample.c headers/alsasample.h \
+               alsagw.c headers/alsagw.h \
 			   rtutils.c headers/rtutils.h \
 			   sampthread.c headers/sampthread.h \
                options.c headers/options.h \

@@ -24,7 +24,7 @@
 extern "C" {
 #endif
 
-#include "headers/alsasample.h"
+#include "headers/alsagw.h"
 #include "headers/thrd.h"
 
 #include <thdacav/thdacav.h>

@@ -18,8 +18,8 @@
  *
  */
 
-#ifndef __defined_headers_alsasample_h
-#define __defined_headers_alsasample_h
+#ifndef __defined_headers_alsagw_h
+#define __defined_headers_alsagw_h
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -136,5 +136,5 @@ void samp_destroy (samp_t *s);
 #ifdef __cplusplus
 }
 #endif
-#endif // __defined_headers_alsasample_h
+#endif // __defined_headers_alsagw_h
 

@@ -18,7 +18,7 @@
  *
  */
 
-#include "headers/alsasample.h"
+#include "headers/alsagw.h"
 #include "headers/rtutils.h"
 #include "headers/logging.h"
 

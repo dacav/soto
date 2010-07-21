@@ -30,7 +30,7 @@
 #include <alsa/asoundlib.h>
 
 #include "headers/options.h"
-#include "headers/alsasample.h"
+#include "headers/alsagw.h"
 #include "headers/thrd.h"
 #include "headers/sampthread.h"
 #include "headers/rtutils.h"

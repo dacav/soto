@@ -31,7 +31,7 @@
 extern "C" {
 #endif
 
-#include "headers/alsasample.h"
+#include "headers/alsagw.h"
 
 #include <alsa/asoundlib.h>
 #include <dacav/dacav.h>
