@@ -18,20 +18,30 @@
  *
  */
 
+#include <signal.h>
+#include <alsa/asoundlib.h>
+#include <thdacav/thdacav.h>
+
 #include "headers/sampthread.h"
 #include "headers/logging.h"
+#include "headers/constants.h"
 #include "headers/rtutils.h"
 
-struct context {
+struct sampth_data {
     snd_pcm_t *pcm;
     samp_frame_t * buffer;
     snd_pcm_uframes_t bufsize;  // in frames.
     thdqueue_t *output;
+
+    struct {
+        int active;
+        pthread_t self;
+    } thread;
 };
 
 static
-samp_frame_t * samp_buffer_dup (const samp_frame_t *buf,
-                                snd_pcm_uframes_t size)
+samp_frame_t * buffer_dup (const samp_frame_t *buf,
+                           snd_pcm_uframes_t size)
 {
     void *ret;
 
@@ -43,9 +53,32 @@ samp_frame_t * samp_buffer_dup (const samp_frame_t *buf,
 }
 
 static
+void destroy_cb (void *arg)
+{
+    struct sampth_data *ctx = (struct sampth_data *) arg;
+
+    thdqueue_enddata(ctx->output);
+
+    free((void *)ctx->buffer);
+    free(arg);
+}
+
+static
+int init_cb (void *arg)
+{
+    struct sampth_data *ctx = (struct sampth_data *) arg;
+
+    pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
+
+    ctx->thread.active = 1;
+    ctx->thread.self = pthread_self();
+    return 0;
+}
+
+static
 int thread_cb (void *arg)
 {
-    struct context *ctx = (struct context *) arg;
+    struct sampth_data *ctx = (struct sampth_data *) arg;
     snd_pcm_uframes_t bufsize, nread;
 
     bufsize = ctx->bufsize;
@@ -56,44 +89,44 @@ int thread_cb (void *arg)
         if (nread < bufsize) {
             LOG_FMT("Overrun detected: read %d of %d", (int) nread, (int) bufsize);
         }
-        if (thdqueue_insert(ctx->output, samp_buffer_dup(ctx->buffer,
+        if (thdqueue_insert(ctx->output, buffer_dup(ctx->buffer,
                 bufsize)) == THDQUEUE_UNALLOWED) {
             return 1;   // Queue dropped! Termination.
         }
     }
-    return 0;
-}
 
-static
-int destroy_cb (void *arg)
-{
-    struct context *ctx = (struct context *) arg;
-
-    free((void *)ctx->buffer);
-    free(arg);
+    // Check cancellations.
+    pthread_cleanup_push(destroy_cb, arg);
+    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+    pthread_testcancel();
+    pthread_cleanup_pop(0);
+    pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
 
     return 0;
 }
 
-int sampthread_create (thrd_pool_t *pool, const samp_t *samp,
-                       thdqueue_t *output)
+int sampth_subscribe (sampth_handler_t *handler, thrd_pool_t *pool,
+                      const samp_t *samp, thdqueue_t *output)
 {
     thrd_info_t thi;
-    struct context *ctx;
+    struct sampth_data *ctx;
+    int err;
 
-    thi.init = NULL;
+    thi.init = init_cb;
     thi.callback = thread_cb;
-    thi.destroy = destroy_cb;
+    thi.destroy = NULL;
 
     /* Note: the thread is in charge of freeing this before shutting
-     * down. */
-    thi.context = malloc(sizeof(struct context));
+     *       down, unless everything fails on thrd_add().
+     */
+    thi.context = malloc(sizeof(struct sampth_data));
     assert(thi.context);
-    ctx = (struct context *) thi.context;
+    ctx = (struct sampth_data *) thi.context;
     ctx->output = output;
     ctx->pcm = samp_get_pcm(samp);
     ctx->bufsize = samp_get_nframes(samp);
     ctx->buffer = (samp_frame_t *) malloc(ctx->bufsize * sizeof(samp_frame_t));
+    ctx->thread.active = 0;
 
     thi.delay.tv_sec = STARTUP_DELAY_SEC;
     thi.delay.tv_nsec = STARTUP_DELAY_nSEC;
@@ -101,6 +134,26 @@ int sampthread_create (thrd_pool_t *pool, const samp_t *samp,
     memcpy((void *) &thi.period, (const void *) samp_get_period(samp),
             sizeof(struct timespec));
 
-    return thrd_add(pool, &thi);
+    if ((err = thrd_add(pool, &thi)) != 0) {
+        free(ctx->buffer);
+        free(ctx);
+        *handler = NULL;
+    } else {
+        *handler = ctx;
+    }
+    return err;
+}
+
+int sampth_sendkill (sampth_handler_t handler)
+{
+    if (handler->thread.active) {
+        int err;
+        
+        err = pthread_cancel(handler->thread.self);
+        assert(!err);
+        return 0;
+    } else {
+        return -1;
+    }
 }
 

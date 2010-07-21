@@ -33,6 +33,8 @@ extern "C" {
 #endif
 
 #include <pthread.h>
+#include <stdio.h>
+
 #include "headers/config.h"
 
 #ifdef DEBUG_ENABLED
@@ -56,10 +58,15 @@ extern "C" {
 
 #endif
 
-#define LOG_MSG(str) \
+#define ERR_MSG(str) \
         fprintf(stderr, "[%08X] " str "\n", (unsigned) pthread_self())
-#define LOG_FMT(fmt, ...) \
+#define ERR_FMT(fmt, ...) \
         fprintf(stderr, "[%08X] " fmt "\n", (unsigned) pthread_self(), __VA_ARGS__)
+
+#define LOG_MSG(str) \
+        fprintf(stdout, "[%08X] " str "\n", (unsigned) pthread_self())
+#define LOG_FMT(fmt, ...) \
+        fprintf(stdout, "[%08X] " fmt "\n", (unsigned) pthread_self(), __VA_ARGS__)
 
 #ifdef __cplusplus
 }

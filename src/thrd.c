@@ -68,10 +68,8 @@ void * thread_routine (void * arg)
 
     context = thrd->info.context;
 
-    DEBUG_MSG("Initialization");
     if (thrd->info.init) {
         if (thrd->info.init(context)) {
-            DEBUG_MSG("Aborting execution");
             if (thrd->info.destroy) {
                 thrd->info.destroy(context);
             }
@@ -79,7 +77,6 @@ void * thread_routine (void * arg)
         }
     }
 
-    DEBUG_TIMESPEC("Thread will start at:", thrd->start);
     rtutils_wait(&thrd->start);
 
     /* Periodic loop: at each cycle the next absoute activation time is
@@ -87,11 +84,9 @@ void * thread_routine (void * arg)
     rtutils_get_now(&next_act);
     for (;;) {
         rtutils_time_increment(&next_act, &thrd->info.period);
-        DEBUG_TIMESPEC("Executing. Next activation", next_act);
 
         if (thrd->info.callback(context)) {
             /* Thread required to shut down */
-            DEBUG_MSG("Termination by callback");
             if (thrd->info.destroy) {
                 thrd->info.destroy(context);
             }
@@ -147,7 +142,8 @@ int thrd_add (thrd_pool_t *pool, const thrd_info_t * new_thrd)
 
     assert((pool->status & THRD_ERR_ALL) == 0);
     assert(new_thrd->callback);
-    assert(! rtutils_time_iszero(&new_thrd->period));
+
+    DEBUG_MSG("Added another thread");
 
     if (pool->status & THRD_POOL_ACTIVE) {
         pool->status |= THRD_ERR_CLOSED;

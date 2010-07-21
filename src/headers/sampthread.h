@@ -18,8 +18,8 @@
  *
  */
 
-#ifndef __defined_headers_sampthread_h
-#define __defined_headers_sampthread_h
+#ifndef __defined_headers_sampth_h
+#define __defined_headers_sampth_h
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -29,11 +29,17 @@ extern "C" {
 
 #include <thdacav/thdacav.h>
 
-int sampthread_create (thrd_pool_t *pool, const samp_t *samp,
-                       thdqueue_t *output);
+typedef struct sampth_data * sampth_handler_t;
+
+/* Just acting as wrapper to thrd_add, TODO retvals
+ */
+int sampth_subscribe (sampth_handler_t *handler, thrd_pool_t *pool,
+                      const samp_t *samp, thdqueue_t *output);
+
+int sampth_sendkill (sampth_handler_t handler);
 
 #ifdef __cplusplus
 }
 #endif
-#endif // __defined_headers_sampthread_h
+#endif // __defined_headers_sampth_h
 

@@ -1,4 +1,8 @@
+#include <pthread.h>
+#include <signal.h>
+
 #include "headers/rtutils.h"
+#include "headers/logging.h"
 
 void rtutils_time_increment (struct timespec *target,
                              const struct timespec *val)
@@ -29,4 +33,41 @@ struct timespec rtutils_ns2time (uint64_t ns)
     ret.tv_nsec = ns % SECOND_NS;
     return ret;
 }
+
+#if 0
+void rtutils_signal_enable (int signum,
+                            void (*action)(int, siginfo_t *, void *))
+{
+    sigset_t mask;
+    int err;
+    struct sigaction sa;
+
+    err = sigemptyset(&mask);
+    assert(err == 0);
+    err = sigaddset(&mask, signum);
+    assert(err == 0);
+    err = pthread_sigmask(SIG_UNBLOCK, &mask, NULL);
+    assert(err == 0);
+
+    sa.sa_sigaction = action;
+    sa.sa_flags = SA_SIGINFO;
+    err = sigemptyset(&sa.sa_mask);
+    assert(err == 0);
+    err = sigaction(signum, &sa, NULL);
+    assert(err == 0);
+}
+
+void rtutils_signal_disable (int signum)
+{
+    sigset_t mask;
+    int err;
+
+    err = sigemptyset(&mask);
+    assert(err == 0);
+    err = sigaddset(&mask, signum);
+    assert(err == 0);
+    err = pthread_sigmask(SIG_BLOCK, &mask, NULL);
+    assert(err == 0);
+}
+#endif
 
