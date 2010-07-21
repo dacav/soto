@@ -71,6 +71,12 @@ typedef struct {
     uint16_t ch1;   /**< Second channel. */
 } samp_frame_t;
 
+/** Data type for sampling bunch. */
+typedef struct {
+    snd_pcm_uframes_t nframes;  /**< Number of stored frames_t objects */
+    samp_frame_t *frames;       /**< Sequentially read objects */
+} samp_framebunch_t;
+
 /** Constructor for the sampler.
  *
  * @note the spec parameter may get side effects.
@@ -126,6 +132,12 @@ samp_err_t samp_interr (samp_t *s);
  *         return value when err is SAMP_ERR_LIBRARY.
  */
 const char * samp_strerr (samp_t *s, samp_err_t err);
+
+/** Destructor for data bunch.
+ *
+ * @param bunch The data bunch to be freed.
+ */
+void samp_destroy_framebunch (samp_framebunch_t *bunch);
 
 /** Destroyer
  *

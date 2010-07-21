@@ -40,16 +40,35 @@ struct sampth_data {
 };
 
 static
-samp_frame_t * buffer_dup (const samp_frame_t *buf,
-                           snd_pcm_uframes_t size)
+samp_framebunch_t * build_framebunch (const samp_frame_t *buf,
+                                      snd_pcm_uframes_t size)
 {
-    void *ret;
+    samp_framebunch_t *ret;
+    uint8_t *pos;
 
-    ret = malloc(size * sizeof(samp_frame_t));
+    /* All-in-one to reduce the number of malloc. This is not very clean,
+     * but I guess it's better in a real-time situation.
+     */
+    assert(size > 0);
+    DEBUG_FMT("Asking allocation of %lu bytes, of which %lu are buffer",
+              sizeof(samp_framebunch_t) + size * sizeof(samp_frame_t),
+              size * sizeof(samp_frame_t));
+    ret = malloc(sizeof(samp_framebunch_t) + size * sizeof(samp_frame_t));
     assert(ret);
-    memcpy(ret, (const void *)buf, size * sizeof(samp_frame_t));
+
+    pos = (uint8_t *) ret;
+    pos += sizeof(samp_frame_t);
+    ((samp_framebunch_t *)ret)->nframes = size;
+    ((samp_framebunch_t *)ret)->frames = (samp_frame_t *)pos;
+
+    memcpy((void *)pos, (const void *)buf, size * sizeof(samp_frame_t));
 
     return ret;
+}
+
+void samp_destroy_framebunch (samp_framebunch_t *bunch)
+{
+    free(bunch);
 }
 
 static
@@ -79,18 +98,28 @@ static
 int thread_cb (void *arg)
 {
     struct sampth_data *ctx = (struct sampth_data *) arg;
-    snd_pcm_uframes_t bufsize, nread;
+    unsigned bufsize;
+    int nread;
 
-    bufsize = ctx->bufsize;
-    nread = snd_pcm_readi(ctx->pcm, ctx->buffer, ctx->bufsize);
-    if (nread < 0) {
-        LOG_FMT("Failure in alsa reading: %s", snd_strerror(nread));
-    } else { 
-        if (nread < bufsize) {
-            LOG_FMT("Overrun detected: read %d of %d", (int) nread, (int) bufsize);
+    bufsize = (unsigned) ctx->bufsize;
+    nread = (int) snd_pcm_readi(ctx->pcm, ctx->buffer, ctx->bufsize);
+    if (nread == -EPIPE) {
+        LOG_MSG("Got Overrun");
+        if (snd_pcm_recover(ctx->pcm, -EPIPE, 0)) {
+            LOG_MSG("Overrun not handled successfully :(");
         }
-        if (thdqueue_insert(ctx->output, buffer_dup(ctx->buffer,
-                bufsize)) == THDQUEUE_UNALLOWED) {
+    } else if (nread < 0) {
+        LOG_FMT("Alsa fails miserably: %s", snd_strerror(nread));
+    } else if (nread >= bufsize) {
+        LOG_FMT("YOU READ WHAT?? %d >= %d; %d", (unsigned) nread,
+                (unsigned) bufsize, nread >= bufsize);
+    } else { 
+        samp_framebunch_t *topush;
+
+        topush = build_framebunch(ctx->buffer, nread);
+        if (thdqueue_insert(ctx->output, (void *)topush)
+                == THDQUEUE_UNALLOWED) {
+            samp_destroy_framebunch(topush);
             return 1;   // Queue dropped! Termination.
         }
     }

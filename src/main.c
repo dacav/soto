@@ -64,42 +64,36 @@ void dump_buffer (samp_frame_t *buf, snd_pcm_uframes_t n)
 #endif
 
 static
-void read_data (thdqueue_t *q, snd_pcm_uframes_t nframes)
+void read_data (thdqueue_t *q)
 {
     for (;;) {
-        samp_frame_t *buf;
+        samp_framebunch_t *bunch;
 
-        if (thdqueue_extract(q, (void **) &buf) == THDQUEUE_ENDDATA) {
+        if (thdqueue_extract(q, (void **) &bunch) == THDQUEUE_ENDDATA) {
             return;
         }
-        //DEBUG_FMT("EXTRACT: buflen=%d", (int) nframes);
+        if (bunch->nframes < 64) DEBUG_FMT("EXTRACT: buflen=%d", (int) bunch->nframes);
         //dump_buffer(buf, nframes);
-        free (buf);
+        samp_destroy_framebunch(bunch);
     }
 }
-
-struct read_data {
-    thdqueue_t *queue;
-    snd_pcm_uframes_t nframes;
-};
 
 static
 int reading_cb (void *arg)
 {
-    struct read_data *data = (struct read_data *) arg;
     DEBUG_MSG("STARTING TO READ");
-    read_data(data->queue, data->nframes);
+    read_data((thdqueue_t *)arg);
     return 1;
 }
 
 static
-int create_reading_thread (thrd_pool_t *pool, struct read_data *rd)
+int create_reading_thread (thrd_pool_t *pool, thdqueue_t *q)
 {
     thrd_info_t th = {
         .init = NULL,
         .callback = reading_cb,
         .destroy = NULL,
-        .context = (void *) rd,
+        .context = (void *) q,
         .period = {
             .tv_sec = 1,
             .tv_nsec = 0
@@ -117,7 +111,7 @@ int main (int argc, char **argv)
     opts_t opts;
     samp_t sampler;
     thrd_pool_t pool;
-    struct read_data rd;
+    thdqueue_t *queue;
     int err;
     sampth_handler_t h;
 
@@ -136,16 +130,15 @@ int main (int argc, char **argv)
     }
 
     /* Populate the thread pool */
-    rd.queue = thdqueue_new();
-    if (sampth_subscribe(&h, &pool, &sampler, rd.queue)) {
+    queue = thdqueue_new();
+    if (sampth_subscribe(&h, &pool, &sampler, queue)) {
         thrd_err_t err = thrd_interr(&pool);
 
         ERR_FMT("Pool init: %s", thrd_strerr(&pool, err));
         exit(EXIT_FAILURE);
     }
 
-    rd.nframes = samp_get_nframes(&sampler);
-    if ((err = create_reading_thread(&pool, &rd)) != 0) {
+    if ((err = create_reading_thread(&pool, queue)) != 0) {
         thrd_err_t err = thrd_interr(&pool); 
 
         ERR_FMT("Adding reader: %s", thrd_strerr(&pool, err));
