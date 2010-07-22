@@ -17,9 +17,11 @@ AC_ARG_ENABLE([debug],
 
 # Checks for header files.
 AC_CHECK_HEADER([alsa/asoundlib.h], [],
-                [AC_MSG_ERROR([Please install libasound2 headers.])])
+                [AC_MSG_ERROR([Please install libasound2.])])
 AC_CHECK_HEADER([dacav/dacav.h], [],
-                [AC_MSG_ERROR([Please install libdacav (>= 0.4.0)])])
+                [AC_MSG_ERROR([Please install libdacav (>= 0.4.0).])])
+AC_CHECK_HEADER([plot.h], [],
+                [AC_MSG_ERROR([Please install libplot.])])
 
 # Checks for libraries.
 AC_CHECK_LIB([dacav], [dlist_sort], [],

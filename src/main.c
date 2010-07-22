@@ -34,6 +34,7 @@
 #include "headers/thrd.h"
 #include "headers/sampthread.h"
 #include "headers/rtutils.h"
+#include "headers/plotting.h"
 
 static
 int init_samp_by_opts (samp_t *samp, opts_t *opts)
