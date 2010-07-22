@@ -6,6 +6,7 @@ soto_SOURCES = main.c \
                rtutils.c headers/rtutils.h \
                sampthread.c headers/sampthread.h \
                options.c headers/options.h \
+               dispatch.c headers/dispatch.h \
                thrd.c headers/thrd.h \
                plotting.c headers/plotting.h \
                headers/logging.h

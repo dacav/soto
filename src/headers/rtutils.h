@@ -115,21 +115,6 @@ int rtutils_time_iszero (const struct timespec *s)
     return s->tv_sec == 0 && s->tv_nsec == 0;
 }
 
-#if 0
-/** Enable the given signal for the calling thread
- *
- * @param signum The signal to be enabled.
- */
-void rtutils_signal_enable (int signum,
-                            void (*action)(int, siginfo_t *, void *));
-
-/** Disable the given signal for the calling thread
- *
- * @param signum The signal to be disabled.
- */
-void rtutils_signal_disable (int signum);
-#endif
-
 #ifdef __cplusplus
 }
 #endif

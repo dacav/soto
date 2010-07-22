@@ -31,7 +31,10 @@ extern "C" {
 
 typedef struct sampth_data * sampth_handler_t;
 
-/* Just acting as wrapper to thrd_add, TODO retvals
+/** 
+ *
+ * @return This function just adds something to pool, therefore you may
+ *         interpret its return value as if it were thrd_add()
  */
 int sampth_subscribe (sampth_handler_t *handler, thrd_pool_t *pool,
                       const samp_t *samp, thdqueue_t *output);

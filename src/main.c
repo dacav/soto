@@ -49,21 +49,6 @@ int init_samp_by_opts (samp_t *samp, opts_t *opts)
     return samp_init(samp, &info, opts->policy);
 }
 
-#if 0
-static
-void dump_buffer (samp_frame_t *buf, snd_pcm_uframes_t n)
-{
-    samp_frame_t *cursor = buf;
-
-    assert(n);
-    while (n--) {
-        LOG_FMT("left=%i right=%i", cursor->ch0, cursor->ch1);
-        cursor ++;
-    }
-    DEBUG_FMT("Buffer [%p] completed... next", (void *) buf);
-}
-#endif
-
 static
 void read_data (thdqueue_t *q)
 {
