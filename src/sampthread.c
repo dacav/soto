@@ -39,36 +39,51 @@ struct sampth_data {
     } thread;
 };
 
+#define EASY
+
 static
-samp_framebunch_t * build_framebunch (const samp_frame_t *buf,
-                                      snd_pcm_uframes_t size)
+sampth_frameset_t * build_frameset (snd_pcm_uframes_t size,
+                                    const samp_frame_t *buf)
 {
-    samp_framebunch_t *ret;
+    sampth_frameset_t *ret;
+#ifndef EASY
     uint8_t *pos;
 
     /* All-in-one to reduce the number of malloc. This is not very clean,
      * but I guess it's better in a real-time situation.
      */
     assert(size > 0);
-    DEBUG_FMT("Asking allocation of %lu bytes, of which %lu are buffer",
-              sizeof(samp_framebunch_t) + size * sizeof(samp_frame_t),
-              size * sizeof(samp_frame_t));
-    ret = malloc(sizeof(samp_framebunch_t) + size * sizeof(samp_frame_t));
+    ret = malloc(sizeof(sampth_frameset_t) + size * sizeof(samp_frame_t));
     assert(ret);
 
     pos = (uint8_t *) ret;
     pos += sizeof(samp_frame_t);
-    ((samp_framebunch_t *)ret)->nframes = size;
-    ((samp_framebunch_t *)ret)->frames = (samp_frame_t *)pos;
+    ((sampth_frameset_t *)ret)->nframes = size;
+    ((sampth_frameset_t *)ret)->frames = (samp_frame_t *)pos;
 
     memcpy((void *)pos, (const void *)buf, size * sizeof(samp_frame_t));
+#else
+    ret = malloc(sizeof(sampth_frameset_t));
+    ret->nframes = size;
+    ret->frames = malloc(sizeof(samp_frame_t) * size);
+#endif
 
     return ret;
 }
 
-void samp_destroy_framebunch (samp_framebunch_t *bunch)
+void sampth_frameset_destroy (sampth_frameset_t *set)
 {
-    free(bunch);
+#ifndef EASY
+    free(set);
+#else
+    free(set->frames);
+    free(set);
+#endif
+}
+
+sampth_frameset_t * sampth_frameset_dup (const sampth_frameset_t *set)
+{
+    return build_frameset(set->nframes, set->frames);
 }
 
 static
@@ -110,16 +125,13 @@ int thread_cb (void *arg)
         }
     } else if (nread < 0) {
         LOG_FMT("Alsa fails miserably: %s", snd_strerror(nread));
-    } else if (nread >= bufsize) {
-        LOG_FMT("YOU READ WHAT?? %d >= %d; %d", (unsigned) nread,
-                (unsigned) bufsize, nread >= bufsize);
     } else { 
-        samp_framebunch_t *topush;
+        sampth_frameset_t *topush;
 
-        topush = build_framebunch(ctx->buffer, nread);
+        topush = build_frameset(nread, ctx->buffer);
         if (thdqueue_insert(ctx->output, (void *)topush)
                 == THDQUEUE_UNALLOWED) {
-            samp_destroy_framebunch(topush);
+            sampth_frameset_destroy(topush);
             return 1;   // Queue dropped! Termination.
         }
     }

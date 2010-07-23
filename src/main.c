@@ -35,6 +35,7 @@
 #include "headers/sampthread.h"
 #include "headers/rtutils.h"
 #include "headers/plotting.h"
+#include "headers/dispatch.h"
 
 static
 int init_samp_by_opts (samp_t *samp, opts_t *opts)
@@ -50,17 +51,48 @@ int init_samp_by_opts (samp_t *samp, opts_t *opts)
 }
 
 static
+void update_plot (plot_t *l, plot_t *r, samp_frame_t *frames,
+                  snd_pcm_uframes_t n)
+{
+    int i;
+
+    for (i = 0; i < n; i ++) {
+        plot_add_value(l, frames[i].ch0);
+        plot_add_value(r, frames[i].ch1);
+    }
+}
+
+static
+void plot_data (thdqueue_t *q)
+{
+    plot_t left, right;
+    sampth_frameset_t *bunch;
+
+    plot_init(&left, 1000);
+    plot_init(&right, 1000);
+    while (thdqueue_extract(q, (void **) &bunch) != THDQUEUE_ENDDATA) {
+        update_plot(&left, &right, bunch->frames, bunch->nframes);
+        sampth_frameset_destroy(bunch);
+    }
+}
+
+static
+int plotting_cb (void *arg)
+{
+    DEBUG_MSG("STARTING TO PLOT");
+    plot_data((thdqueue_t *)arg);
+    abort();    // FIXME you should be able to exit if there's nothing
+                // enqueued!!
+    return 0;
+}
+
+static
 void read_data (thdqueue_t *q)
 {
-    for (;;) {
-        samp_framebunch_t *bunch;
+    sampth_frameset_t *bunch;
 
-        if (thdqueue_extract(q, (void **) &bunch) == THDQUEUE_ENDDATA) {
-            return;
-        }
-        if (bunch->nframes < 64) DEBUG_FMT("EXTRACT: buflen=%d", (int) bunch->nframes);
-        //dump_buffer(buf, nframes);
-        samp_destroy_framebunch(bunch);
+    while (thdqueue_extract(q, (void **) &bunch) != THDQUEUE_ENDDATA) {
+        sampth_frameset_destroy(bunch);
     }
 }
 
@@ -69,12 +101,38 @@ int reading_cb (void *arg)
 {
     DEBUG_MSG("STARTING TO READ");
     read_data((thdqueue_t *)arg);
-    return 1;
+    abort();    // FIXME same stuff
+    return 0;
 }
+
+static
+int create_plotting_thread (thrd_pool_t *pool, thdqueue_t *q)
+{
+    assert(q != NULL);
+
+    thrd_info_t th = {
+        .init = NULL,
+        .callback = plotting_cb,
+        .destroy = NULL,
+        .context = (void *) q,
+        .period = {
+            .tv_sec = 1,
+            .tv_nsec = 0
+         },
+        .delay = {
+            .tv_sec = 0,
+            .tv_nsec = 0
+         }
+    };
+    return thrd_add(pool, &th);
+}
+
 
 static
 int create_reading_thread (thrd_pool_t *pool, thdqueue_t *q)
 {
+    assert(q != NULL);
+
     thrd_info_t th = {
         .init = NULL,
         .callback = reading_cb,
@@ -95,11 +153,12 @@ int create_reading_thread (thrd_pool_t *pool, thdqueue_t *q)
 int main (int argc, char **argv)
 {
     opts_t opts;
+    int err;
     samp_t sampler;
     thrd_pool_t pool;
     thdqueue_t *queue;
-    int err;
     sampth_handler_t h;
+    disp_t dispatcher;
 
     DEBUG_MSG("STEP!");
 
@@ -123,11 +182,18 @@ int main (int argc, char **argv)
         ERR_FMT("Pool init: %s", thrd_strerr(&pool, err));
         exit(EXIT_FAILURE);
     }
+    disp_init(&dispatcher, queue, (disp_dup_t)sampth_frameset_dup);
 
-    if ((err = create_reading_thread(&pool, queue)) != 0) {
+    if ((err = create_reading_thread(&pool, disp_new_hook(&dispatcher))) != 0) {
         thrd_err_t err = thrd_interr(&pool); 
 
-        ERR_FMT("Adding reader: %s", thrd_strerr(&pool, err));
+        ERR_FMT("Adding first reader: %s", thrd_strerr(&pool, err));
+        exit(EXIT_FAILURE);
+    }
+    if ((err = create_plotting_thread(&pool, disp_new_hook(&dispatcher))) != 0) {
+        thrd_err_t err = thrd_interr(&pool); 
+
+        ERR_FMT("Adding second reader: %s", thrd_strerr(&pool, err));
         exit(EXIT_FAILURE);
     }
 
@@ -138,9 +204,8 @@ int main (int argc, char **argv)
         exit(EXIT_FAILURE);
     }
 
-    DEBUG_MSG("KILLING SPREAD");
-    sleep(2);
-    DEBUG_MSG("Sending my bill");
+    sleep(60);
+    DEBUG_MSG("Killing sampler after 60 secs");
     if (sampth_sendkill(h)) {
         DEBUG_MSG("...but I failed miserably");
     } else {
@@ -149,6 +214,7 @@ int main (int argc, char **argv)
 
     thrd_destroy(&pool);
     samp_destroy(&sampler);
+    disp_destroy(&dispatcher);
 
     exit(EXIT_SUCCESS);
 }

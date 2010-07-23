@@ -88,10 +88,8 @@ void replot (plot_t *p)
 
         value = (intptr_t) diter_next(iter);
         if (count == 0) {
-            DEBUG_FMT("Moving cursor at <%i,%i>", 0, value);
             pl_move_r(plot, 0, value);
         } else {
-            DEBUG_FMT("Line to <%i,%i>", count, value);
             pl_cont_r(plot, count, value);
         }
         

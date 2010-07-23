@@ -8,18 +8,20 @@ extern "C" {
 #include <dacav/dacav.h>
 #include <pthread.h>
 
-#include "headers/thrd.h"
-
 typedef void * (* disp_dup_t) (void *);
 
 typedef struct {
-    thdqueue_t *input;  /**< Queue of incoming objects; */
-    dlist_t *outputs;   /**< List of quques for outgoing objects; */
-    size_t noutputs;    /**< Number of output queues; */
-    disp_dup_t dup;     /**< Copy constructor for the dispatched object; */
+    thdqueue_t *input;      /**< Queue of incoming objects; */
+    dlist_t *outputs;       /**< List of quques for outgoing objects; */
+    size_t noutputs;        /**< Number of output queues; */
+    disp_dup_t dup;         /**< Copy constructor for the dispatched
+                             *   object; */
 
-    /** Protect the outputs queue. */
-    pthread_mutex_t lock;
+    pthread_mutex_t lock;   /**< Protect the outputs queue. */
+    pthread_t thread;       /**< The dispatching thread */
+
+    int active;             /**< Flag preventing new hooks creation if the
+                             *   producer already finished */
 } disp_t;
 
 /** Constructor for the dispatcher.
@@ -38,20 +40,9 @@ void disp_init (disp_t *disp, thdqueue_t *input, disp_dup_t dup);
  *
  * @param disp The dispatcher.
  *
- * @return The new queue.
+ * @return The new queue or NULL if the 
  */
 thdqueue_t * disp_new_hook (disp_t *disp);
-
-/** Startup the dispatcher thread on the given pool.
- *
- * @param disp The dispatcher;
- * @param pool The pool on which the given dispatcher will start.
- *
- * @return This function just adds something to pool, therefore you may
- *         interpret its return value as if it were thrd_add().
- */
-int disp_subscribe (disp_t *disp, thrd_pool_t *pool,
-                    const struct timespec *period);
 
 /** Destructor for the dispatcher.
  *

@@ -31,15 +31,57 @@ extern "C" {
 
 typedef struct sampth_data * sampth_handler_t;
 
-/** 
+/** Data type for sampling set.
+ *
+ * This is the data produced by the thread and pushed to the output queue.
+ *
+ * @see sampth_subscribe().
+ */
+typedef struct {
+    snd_pcm_uframes_t nframes;  /**< Number of stored frames_t objects */
+    samp_frame_t *frames;       /**< Sequentially read objects */
+
+} sampth_frameset_t;
+
+/** Subscribe a sampling thread to a thread pool.
+ *
+ * @param handler A pointer where the sampling thread handler address will
+ *                be stored;
+ * @param pool The pool used for subscribing;
+ * @param samp The sampler;
+ * @param output The output queue in which data will be pushed.
+ *
+ * @see headers/alsagw.h.
+ * @see headers/thrd.h.
  *
  * @return This function just adds something to pool, therefore you may
- *         interpret its return value as if it were thrd_add()
+ *         interpret its return value as if it were thrd_add().
  */
 int sampth_subscribe (sampth_handler_t *handler, thrd_pool_t *pool,
                       const samp_t *samp, thdqueue_t *output);
 
+/** Request sampling termination.
+ *
+ * This call terminates the running sampler and signals the data
+ * termination on the output queue.
+ *
+ * @param handler The handler of the sampling thread.
+ */
 int sampth_sendkill (sampth_handler_t handler);
+
+/** Destructor for data set.
+ *
+ * @param set The data set to be freed.
+ */
+void sampth_frameset_destroy (sampth_frameset_t *set);
+
+/** Copy constructor for data set.
+ *
+ * @param set The data set to be copied.
+ *
+ * @return The newly allocated data set
+ */
+sampth_frameset_t * sampth_frameset_dup (const sampth_frameset_t *set);
 
 #ifdef __cplusplus
 }

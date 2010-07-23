@@ -37,8 +37,14 @@ typedef struct {
     uint8_t channels;
 } samp_info_t;
 
+/** Policy for parameter changing.
+ *
+ * Alsa will probably modify your parameter in order to adapt it to the
+ * audiocard. The following flags allow you to better control this
+ * behaviour.
+ */
 typedef enum {
-    SAMP_ACCEPT_RATE = 1 << 0
+    SAMP_ACCEPT_RATE = 1 << 0   /**< Accept the suggested sampling rate */
 } samp_policy_t;
 
 typedef struct {
@@ -67,15 +73,9 @@ typedef enum {
  *
  */
 typedef struct {
-    uint16_t ch0;   /**< First channel; */
-    uint16_t ch1;   /**< Second channel. */
+    int16_t ch0;   /**< First channel; */
+    int16_t ch1;   /**< Second channel. */
 } samp_frame_t;
-
-/** Data type for sampling bunch. */
-typedef struct {
-    snd_pcm_uframes_t nframes;  /**< Number of stored frames_t objects */
-    samp_frame_t *frames;       /**< Sequentially read objects */
-} samp_framebunch_t;
 
 /** Constructor for the sampler.
  *
@@ -83,8 +83,10 @@ typedef struct {
  *
  * @param s The sampler instance;
  * @param spec The specification;
- * @param accept The policy for specification adjustment;
- * @param out Output queue (for sampled data);
+ * @param accept The policy for specification adjustment.
+ *
+ * @see samp_policy_t.
+ *
  * @return 0 on success, on failure.
  */
 int samp_init (samp_t *s, const samp_info_t *spec, samp_policy_t accept);
@@ -132,12 +134,6 @@ samp_err_t samp_interr (samp_t *s);
  *         return value when err is SAMP_ERR_LIBRARY.
  */
 const char * samp_strerr (samp_t *s, samp_err_t err);
-
-/** Destructor for data bunch.
- *
- * @param bunch The data bunch to be freed.
- */
-void samp_destroy_framebunch (samp_framebunch_t *bunch);
 
 /** Destroyer
  *

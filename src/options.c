@@ -66,7 +66,7 @@ static const char help [] =
 "  --alsa-rate={rate} | -r {rate}\n"
 "        Specify a sample rate for ALSA in Hertz (default: 44100);\n\n"
 "  --alsa-mode={mode} | -m {mode}\n"
-"        Specify a sample mode (default: STEREO, also MONO is\n"
+"        Specify a sample mode (default: stereo, also mono is\n"
 "        available);\n\n"
 "  --sample-buffer={count} | -B {count}\n"
 "        Specify the number of samples (according to the '--alsa-rate'\n"
