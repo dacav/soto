@@ -33,10 +33,10 @@
 /* TODO Parametrize default values for options through `configure.ac'
  *      Produce a possibly verbose output
  */
-#define DEFAULT_RATE    44100
-#define DEFAULT_DEVICE  "hw:0,0"
-#define DEFAULT_MINPRIO 0
-#define DEFAULT_PERIOD_SLOTS 10
+#define DEFAULT_RATE            44100
+#define DEFAULT_DEVICE          "hw:0,0"
+#define DEFAULT_MINPRIO         0
+#define DEFAULT_PERIOD_SLOTS    10
 
 static const char optstring[] = "d:r:m:p:B:c:h";
 static const struct option longopts[] = {
@@ -142,7 +142,7 @@ void set_defaults (opts_t *so)
     so->mode = STEREO;
     so->rate = DEFAULT_RATE;
     so->minprio = DEFAULT_MINPRIO;
-    so->nsamp = 10;
+    so->nsamp = DEFAULT_PERIOD_SLOTS;
     so->policy = SAMP_ACCEPT_RATE;
 }
 
