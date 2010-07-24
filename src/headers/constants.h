@@ -18,8 +18,18 @@ extern "C" {
 
 /* Size of the graphical window used for plotting */
 #define PLOT_BITMAPSIZE "300x150"
-#define PLOT_MIN_Y INT16_MIN
-#define PLOT_MAX_Y INT16_MAX
+#define PLOT_MIN_Y (2 * INT16_MAX)
+#define PLOT_MAX_Y (2 * INT16_MIN)
+#define PLOT_OFFSET_UP INT16_MAX
+#define PLOT_OFFSET_DOWN INT16_MIN
+
+
+/* Multiplication factor (plotthread.c): the period of the plotter will be
+ * a multiple of the sampling period w.r.t. this constant */
+#define PLOT_PERIOD_TIMES 10
+
+/* Number of sampling used for average */
+#define PLOT_AVERAGE_LEN  10
 
 #ifdef __cplusplus
 }

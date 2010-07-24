@@ -20,12 +20,14 @@
 
 #include <stdio.h>
 #include <assert.h>
+#include <stdlib.h>
 
 #include "headers/plotting.h"
 #include "headers/constants.h"
 #include "headers/logging.h"
 
-void plot_init (plot_t *p, size_t bufsize)
+static
+plPlotter * init_libplot (size_t bufsize)
 {
     plPlotter *plot;
     plPlotterParams *params;
@@ -50,66 +52,87 @@ void plot_init (plot_t *p, size_t bufsize)
     assert(err >= 0);
     err = pl_space_r(plot, 0, PLOT_MIN_Y, bufsize, PLOT_MAX_Y);
     assert(err >= 0);
-	err = pl_flinewidth_r(plot, 0.25);
+	err = pl_linewidth_r(plot, 1);
     assert(err >= 0);
-	err = pl_pencolorname_r(plot, "red");
+	err = pl_pencolorname_r(plot, "black");
     assert(err >= 0);
 
-    p->plot = plot;
-    p->circular = dlist_new();
+    return plot;
+}
+
+
+void plot_init (plot_t *p, size_t bufsize)
+{
+    p->plot = init_libplot(bufsize);
+
+    p->circular = malloc(bufsize * sizeof(samp_frame_t));
+    assert(p->circular);
     p->bufsize = bufsize;
-    p->stored = 0;
+    p->stored = p->cursor = 0;
 }
 
 static
-void add_circular (plot_t *p, intptr_t val)
+void draw_lines (plPlotter *plot, unsigned count, samp_frame_t *from,
+                 samp_frame_t *to)
 {
-    p->circular = dlist_append(p->circular, (void *)val);
-    if (p->stored < p->bufsize) {
-        p->stored ++;
-    } else {
-        intptr_t phony;
-        p->circular = dlist_pop(p->circular, (void **) &phony);
-    }
-}
-
-static
-void replot (plot_t *p)
-{
-    diter_t *iter;
-    unsigned count;
-    plPlotter *plot;
-
-    iter = dlist_iter_new(&p->circular);
-    count = 0;
-    plot = p->plot;
-    while (diter_hasnext(iter)) {
-        int16_t value;
-
-        value = (intptr_t) diter_next(iter);
-        if (count == 0) {
-            pl_move_r(plot, 0, value);
-        } else {
-            pl_cont_r(plot, count, value);
-        }
-        
-        count ++;
-    }
+    pl_move_r(plot, count - 1, from->ch0 + PLOT_OFFSET_UP);
+    pl_cont_r(plot, count, to->ch0 + PLOT_OFFSET_UP);
     pl_endpath_r(plot);
-    pl_erase_r(plot);
-    dlist_iter_free(iter);
+
+    pl_move_r(plot, count - 1, from->ch1 + PLOT_OFFSET_DOWN);
+    pl_cont_r(plot, count, to->ch1 + PLOT_OFFSET_DOWN);
+    pl_endpath_r(plot);
 }
 
-void plot_add_value (plot_t *p, int16_t val)
+static
+void scan (plot_t *p)
 {
-    add_circular(p, val);
-    replot(p);
+    unsigned i, n, count;
+    samp_frame_t *circ;
+
+    circ = p->circular;
+    n = p->stored;
+    count = 1;
+
+    i = p->cursor + 1;
+    while (count < n && i < p->bufsize) {
+        draw_lines(p->plot, count ++, &circ[i - 1], &circ[i]);
+        i ++;
+    }
+    if (count < n) {
+        draw_lines(p->plot, count ++, &circ[p->bufsize - 1], &circ[0]);
+    }
+    i = 1;
+    while (count < n && i < p->cursor) {
+        draw_lines(p->plot, count ++, &circ[i - 1], &circ[i]);
+        i ++;
+    }
+}
+
+static
+void insert (plot_t *plot, samp_frame_t *pair)
+{
+    unsigned cur;
+
+    cur = plot->cursor;
+    plot->circular[cur ++] = *pair;
+    plot->cursor = cur >= plot->bufsize ? 0 : cur;
+    if (plot->stored ++ > plot->bufsize) {
+        plot->stored = plot->bufsize;
+    }
+}
+
+void plot_add_frame (plot_t *p, samp_frame_t *frame)
+{
+    insert(p, frame);
+    scan(p);
+    pl_erase_r(p->plot);
 }
 
 void plot_destroy (plot_t *p)
 {
     pl_closepl_r(p->plot);
     pl_deletepl_r(p->plot);
-    dlist_free(p->circular, NULL);
+    free(p->circular);
 }
 

@@ -28,16 +28,19 @@ extern "C" {
 #include <plot.h>
 #include <stdint.h>
 
+#include "headers/alsagw.h"
+
 typedef struct {
     plPlotter * plot;
-    dlist_t * circular;
+    samp_frame_t * circular;
     size_t bufsize;
     size_t stored;
+    unsigned cursor;
 } plot_t;
 
 void plot_init (plot_t *p, size_t bufsize);
 
-void plot_add_value (plot_t *p, int16_t val);
+void plot_add_frame (plot_t *p, samp_frame_t *frame);
 
 void plot_destroy (plot_t *p);
 

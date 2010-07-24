@@ -8,8 +8,9 @@ soto_SOURCES = main.c \
                options.c headers/options.h \
                dispatch.c headers/dispatch.h \
                thrd.c headers/thrd.h \
+               plotthread.c headers/plotthread.h \
                plotting.c headers/plotting.h \
                headers/logging.h
 
-soto_LDADD = -lasound -ldacav -lrt -lthdacav -lplot
+soto_LDADD = -lasound -ldacav -lrt -lthdacav -lplot -lefence
 

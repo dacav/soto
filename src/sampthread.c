@@ -47,6 +47,7 @@ sampth_frameset_t * build_frameset (snd_pcm_uframes_t size,
 {
     sampth_frameset_t *ret;
 #ifndef EASY
+    // FIXME this is buggy
     uint8_t *pos;
 
     /* All-in-one to reduce the number of malloc. This is not very clean,
@@ -73,12 +74,10 @@ sampth_frameset_t * build_frameset (snd_pcm_uframes_t size,
 
 void sampth_frameset_destroy (sampth_frameset_t *set)
 {
-#ifndef EASY
-    free(set);
-#else
+#ifdef EASY
     free(set->frames);
-    free(set);
 #endif
+    free(set);
 }
 
 sampth_frameset_t * sampth_frameset_dup (const sampth_frameset_t *set)
@@ -191,6 +190,10 @@ int sampth_sendkill (sampth_handler_t handler)
         int err;
         
         err = pthread_cancel(handler->thread.self);
+        /* Note: the thread pool (see headers/thrd.h) is in charge of
+         * joining the thread
+         */
+
         assert(!err);
         return 0;
     } else {
