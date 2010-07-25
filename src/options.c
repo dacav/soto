@@ -21,6 +21,7 @@
 #include "headers/options.h"
 #include "headers/config.h"
 #include "headers/rtutils.h"
+#include "headers/constants.h"
 
 #include <stdio.h>
 #include <getopt.h>
@@ -29,14 +30,6 @@
 #include <stdlib.h>
 #include <sched.h>
 #include <assert.h>
-
-/* TODO Parametrize default values for options through `configure.ac'
- *      Produce a possibly verbose output
- */
-#define DEFAULT_RATE            44100
-#define DEFAULT_DEVICE          "hw:0,0"
-#define DEFAULT_MINPRIO         0
-#define DEFAULT_PERIOD_SLOTS    10
 
 static const char optstring[] = "d:r:m:p:B:c:h";
 static const struct option longopts[] = {

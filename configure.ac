@@ -19,15 +19,15 @@ AC_ARG_ENABLE([debug],
 AC_CHECK_HEADER([alsa/asoundlib.h], [],
                 [AC_MSG_ERROR([Please install libasound2.])])
 AC_CHECK_HEADER([dacav/dacav.h], [],
-                [AC_MSG_ERROR([Please install libdacav (>= 0.4.0).])])
+                [AC_MSG_ERROR([Please install libdacav (>= 0.4.2).])])
 AC_CHECK_HEADER([plot.h], [],
                 [AC_MSG_ERROR([Please install libplot.])])
 
 # Checks for libraries.
 AC_CHECK_LIB([dacav], [dlist_sort], [],
-             [AC_MSG_ERROR([libdacav version required: >= 0.4.0])])
+             [AC_MSG_ERROR([libdacav version required: >= 0.4.2]).])
 AC_CHECK_LIB([thdacav], [thdqueue_new], [],
-             [AC_MSG_ERROR([libdacav version required: >= 0.4.0])])
+             [AC_MSG_ERROR([libdacav version required: >= 0.4.2]).])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_TYPE_SIZE_T

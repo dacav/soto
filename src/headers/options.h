@@ -59,7 +59,7 @@ typedef struct {
     /* Threading related options */
 
     /** Minimum priority value to be used. This will be added to the
-     * result of the sched_get_priority_min() syscall.
+     *  result of the sched_get_priority_min() syscall.
      */
     int minprio;
 

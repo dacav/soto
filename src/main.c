@@ -75,6 +75,7 @@ int main (int argc, char **argv)
 
     /* Populate the thread pool */
     queue = thdqueue_new();
+
     if (sampth_subscribe(&h, &pool, &sampler, queue)) {
         thrd_err_t err = thrd_interr(&pool);
 
@@ -83,6 +84,7 @@ int main (int argc, char **argv)
     }
     disp_init(&dispatcher, queue, (disp_dup_t)sampth_frameset_dup);
 
+    err = 1;
     if ((err = plotth_subscribe(&pool, disp_new_hook(&dispatcher),
                                 &sampinfo)) != 0) {
         thrd_err_t err = thrd_interr(&pool); 

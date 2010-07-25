@@ -51,7 +51,7 @@ static
 int init_cb (void *arg)
 {
     struct plotth_data *ctx = (struct plotth_data *) arg;
-    plot_init(&ctx->plot, ctx->rate);
+    plot_init(&ctx->plot, ctx->rate / PLOT_AVERAGE_LEN);
 
     return 0;
 }
@@ -85,6 +85,7 @@ void update_plot (struct plotth_data *ctx, sampth_frameset_t *set)
         j ++;
     }
     ctx->nread = nframes;
+
 }
 
 static
@@ -92,10 +93,9 @@ int thread_cb (void *arg)
 {
     struct plotth_data *ctx = (struct plotth_data *) arg;
     sampth_frameset_t *set;
+    size_t nenqueued = PLOT_PERIOD_TIMES;
 
-    int k = 0;
-
-    for (;;) {
+    while (nenqueued --) {
         switch (thdqueue_try_extract(ctx->input, (void **) &set)) {
             case THDQUEUE_EMPTY:
                 /* Nothing left to plot */
@@ -106,7 +106,6 @@ int thread_cb (void *arg)
             case THDQUEUE_SUCCESS:
                 /* Updating new set */
                 update_plot(ctx, set);
-                k ++;
                 sampth_frameset_destroy(set);
                 break;
             default:
@@ -146,6 +145,7 @@ int plotth_subscribe (thrd_pool_t *pool, thdqueue_t *input,
      */
     thi.context = malloc(sizeof(struct plotth_data));
     assert(thi.context);
+    DEBUG_FMT("I subscribed %p as context data", (void *) thi.context);
     ctx = (struct plotth_data *) thi.context;
     ctx->input = input;
     ctx->rate = samp->rate;

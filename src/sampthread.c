@@ -21,6 +21,7 @@
 #include <signal.h>
 #include <alsa/asoundlib.h>
 #include <thdacav/thdacav.h>
+#include <stdint.h>
 
 #include "headers/sampthread.h"
 #include "headers/logging.h"
@@ -37,16 +38,21 @@ struct sampth_data {
         int active;
         pthread_t self;
     } thread;
+
+    uint64_t alsa_wait_max;
 };
 
-#define EASY
+/* This define removes the optimization for the following two functions:
+ * the optimimization i's not working for the moment. It's easy to fix it
+ * but not a development priority. */
+#define UNEFFICIENT_BUT_WORKING
 
 static
 sampth_frameset_t * build_frameset (snd_pcm_uframes_t size,
                                     const samp_frame_t *buf)
 {
     sampth_frameset_t *ret;
-#ifndef EASY
+#ifndef UNEFFICIENT_BUT_WORKING
     // FIXME this is buggy
     uint8_t *pos;
 
@@ -74,7 +80,7 @@ sampth_frameset_t * build_frameset (snd_pcm_uframes_t size,
 
 void sampth_frameset_destroy (sampth_frameset_t *set)
 {
-#ifdef EASY
+#ifdef UNEFFICIENT_BUT_WORKING
     free(set->frames);
 #endif
     free(set);
@@ -109,6 +115,51 @@ int init_cb (void *arg)
 }
 
 static
+int alsa_read (snd_pcm_t *pcm, samp_frame_t *buffer,
+               snd_pcm_uframes_t bufsize, int maxwait)
+{
+    int nread;
+
+    nread = (int) snd_pcm_readi(pcm, buffer, bufsize);
+    if (nread > 0) {
+        /* Everything worked correctly. */
+        return nread;
+    }
+
+    /* Note: alsa errors are negative */
+    switch (nread) {
+        case -EPIPE:
+            LOG_MSG("Got overrun");
+            if (snd_pcm_recover(pcm, nread, 0)) {
+                LOG_MSG("Overrun handling failure");
+            }
+            nread = 1;
+        case -EAGAIN:
+            /* Smelly undocumented failure, which turns out to be
+             * recoverable with a little waiting before trying again. This
+             * can be achieved by snd_pcm_wait, which btw requires the
+             * value expressed in microseconds (hence maxwait/10). */
+            LOG_MSG("Waiting resource");
+            nread = snd_pcm_wait(pcm, maxwait / 10);
+    }
+
+    /* After the recover we retry to read data once, if it fails again we
+     * just skip to next activation and abort this job */
+    switch (nread) {
+        case 1:
+            return (int) snd_pcm_readi(pcm, buffer, bufsize);
+        case 0:
+            return -EAGAIN;
+        case -EPIPE:
+            return snd_pcm_recover(pcm, nread, 0);
+        default:
+            /* Everything is badly documented here. Let the snd_strerr
+             * decide what is this, I did the best effort to recover. */
+            return nread;
+    }
+}
+
+static
 int thread_cb (void *arg)
 {
     struct sampth_data *ctx = (struct sampth_data *) arg;
@@ -116,13 +167,10 @@ int thread_cb (void *arg)
     int nread;
 
     bufsize = (unsigned) ctx->bufsize;
-    nread = (int) snd_pcm_readi(ctx->pcm, ctx->buffer, ctx->bufsize);
-    if (nread == -EPIPE) {
-        LOG_MSG("Got Overrun");
-        if (snd_pcm_recover(ctx->pcm, -EPIPE, 0)) {
-            LOG_MSG("Overrun not handled successfully :(");
-        }
-    } else if (nread < 0) {
+
+    nread = alsa_read(ctx->pcm, ctx->buffer, ctx->bufsize,
+                      ctx->alsa_wait_max);
+    if (nread <= 0) {
         LOG_FMT("Alsa fails miserably: %s", snd_strerror(nread));
     } else { 
         sampth_frameset_t *topush;
@@ -150,6 +198,7 @@ int sampth_subscribe (sampth_handler_t *handler, thrd_pool_t *pool,
 {
     thrd_info_t thi;
     struct sampth_data *ctx;
+    const struct timespec * period;
     int err;
 
     thi.init = init_cb;
@@ -171,7 +220,10 @@ int sampth_subscribe (sampth_handler_t *handler, thrd_pool_t *pool,
     thi.delay.tv_sec = STARTUP_DELAY_SEC;
     thi.delay.tv_nsec = STARTUP_DELAY_nSEC;
 
-    memcpy((void *) &thi.period, (const void *) samp_get_period(samp),
+    /* Period management */
+    period = samp_get_period(samp);
+    ctx->alsa_wait_max = rtutils_time2ns(period) / ALSA_WAIT_PROPORTION;
+    memcpy((void *) &thi.period, (const void *) period,
             sizeof(struct timespec));
 
     if ((err = thrd_add(pool, &thi)) != 0) {

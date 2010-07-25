@@ -12,5 +12,5 @@ soto_SOURCES = main.c \
                plotting.c headers/plotting.h \
                headers/logging.h
 
-soto_LDADD = -lasound -ldacav -lrt -lthdacav -lplot -lefence
+soto_LDADD = -lasound -ldacav -lrt -lthdacav -lplot #-lefence
 
