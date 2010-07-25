@@ -57,15 +57,18 @@ int main (int argc, char **argv)
     sampth_handler_t h;
     disp_t dispatcher;
 
-    DEBUG_MSG("STEP!");
-
+    /* Parsing options */
     if (opts_parse(&opts, argc, argv)) {
         exit(EXIT_FAILURE);
     }
+
+    /* Threadpool initialization */
     thrd_init(&pool, opts.minprio);
 
+    /* Build sampling information by reading options */
     samp_info_by_opts(&sampinfo, &opts);
 
+    /* Init sampling system */
     if (samp_init(&sampler, &sampinfo, opts.policy)) {
         samp_err_t err = samp_interr(&sampler);
 
@@ -73,18 +76,21 @@ int main (int argc, char **argv)
         exit(EXIT_FAILURE);
     }
 
-    /* Populate the thread pool */
+    /* Build communication queue */
     queue = thdqueue_new();
 
+    /* Subscribe sampling thread, it will be enabled later. */
     if (sampth_subscribe(&h, &pool, &sampler, queue)) {
         thrd_err_t err = thrd_interr(&pool);
 
         ERR_FMT("Pool init: %s", thrd_strerr(&pool, err));
         exit(EXIT_FAILURE);
     }
+
+    /* Init the sampling dispatching system */
     disp_init(&dispatcher, queue, (disp_dup_t)sampth_frameset_dup);
 
-    err = 1;
+    /* Subscribe the average + plot system */
     if ((err = plotth_subscribe(&pool, disp_new_hook(&dispatcher),
                                 &sampinfo)) != 0) {
         thrd_err_t err = thrd_interr(&pool); 
@@ -93,6 +99,11 @@ int main (int argc, char **argv)
         exit(EXIT_FAILURE);
     }
 
+    /* This is not elegant, but I have to deliver */
+    LOG_MSG("This program will start in two seconds and terminate after 1 minute");
+    sleep(2);
+
+    /* Starting the pool */
     if (thrd_start(&pool)) {
         thrd_err_t err = thrd_interr(&pool);
 
@@ -101,11 +112,11 @@ int main (int argc, char **argv)
     }
 
     sleep(60);
-    DEBUG_MSG("Killing sampler after 60 secs");
+    LOG_MSG("Sending termination signal.");
     if (sampth_sendkill(h)) {
-        DEBUG_MSG("...but I failed miserably");
+        LOG_MSG("...but I failed miserably");
     } else {
-        DEBUG_MSG("...And I succeded in it");
+        LOG_MSG("...And I succeded in it");
     }
 
     thrd_destroy(&pool);
