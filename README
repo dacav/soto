@@ -1,6 +1,17 @@
-This project is meant to be part of the exam I'm taking in Real Time
-Operating System and Middleware.
+--------------------------------------------------------------------------
 
-If everything works correctly it should become an alsa-based audio
-spectrum analyzer.
+   This project is meant to be part of the exam I'm taking in Real Time
+                     Operating System and Middleware.
+
+--------------------------------------------------------------------------
+
+Compliation and dependency:
+
+    This project depends on the following libraries:
+    -> Alsa asoundlib                         http://www.alsa-project.org/
+    -> GNU libplot                  http://www.gnu.org/software/plotutils/
+    -> libdacav                  http://sourceforge.net/projects/libdacav/
+
+    The compilation is uses the standard autotools process. See the
+    INSTALL file for detailed information.
 
