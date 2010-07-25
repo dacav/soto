@@ -26,6 +26,9 @@
 #include "headers/constants.h"
 #include "headers/logging.h"
 
+/* Reentrant initialization for libplot. Thanks to the guy who fixed the
+ * libplot.
+ */
 static
 plPlotter * init_libplot (size_t bufsize)
 {
@@ -59,7 +62,6 @@ plPlotter * init_libplot (size_t bufsize)
 
     return plot;
 }
-
 
 void plot_init (plot_t *p, size_t bufsize)
 {

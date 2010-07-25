@@ -1,3 +1,23 @@
+/*
+ * Copyright 2010 Giovanni Simoni
+ *
+ * This file is part of Soto.
+ *
+ * Soto is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Soto is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Soto.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
+
 #include <pthread.h>
 #include <signal.h>
 
@@ -33,41 +53,4 @@ struct timespec rtutils_ns2time (uint64_t ns)
     ret.tv_nsec = ns % SECOND_NS;
     return ret;
 }
-
-#if 0
-void rtutils_signal_enable (int signum,
-                            void (*action)(int, siginfo_t *, void *))
-{
-    sigset_t mask;
-    int err;
-    struct sigaction sa;
-
-    err = sigemptyset(&mask);
-    assert(err == 0);
-    err = sigaddset(&mask, signum);
-    assert(err == 0);
-    err = pthread_sigmask(SIG_UNBLOCK, &mask, NULL);
-    assert(err == 0);
-
-    sa.sa_sigaction = action;
-    sa.sa_flags = SA_SIGINFO;
-    err = sigemptyset(&sa.sa_mask);
-    assert(err == 0);
-    err = sigaction(signum, &sa, NULL);
-    assert(err == 0);
-}
-
-void rtutils_signal_disable (int signum)
-{
-    sigset_t mask;
-    int err;
-
-    err = sigemptyset(&mask);
-    assert(err == 0);
-    err = sigaddset(&mask, signum);
-    assert(err == 0);
-    err = pthread_sigmask(SIG_BLOCK, &mask, NULL);
-    assert(err == 0);
-}
-#endif
 

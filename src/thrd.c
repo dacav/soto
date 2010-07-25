@@ -48,28 +48,38 @@
 #define THRD_POOL_CONDITION \
     ( THRD_POOL_ACTIVE | THRD_POOL_KILLALL )
 
+/* Internal descriptor for a thread */
 typedef struct {
 
     int priority;               /* Thread's priority */
     pthread_t handler;          /* Handler of the thread. */
     uint8_t status;             /* Status flags. */
-    const thrd_info_t info;     /* User defined thread info. */
+    const thrd_info_t info;     /* User defined thread info. Defined in
+                                   headers/thrd.h */
 
-    struct timespec start;      /* Pool start time, used for delay */
+    struct timespec start;      /* Pool start time, used for computing the
+                                   delay during startup phase. */
 
 } thrd_t; 
 
+/* Each real-time thread of this project actually corresponds to the
+ * execution of this routine. */
 static
 void * thread_routine (void * arg)
 {
+    /* Thread management information is transparently keeped into the
+     * thread stack. The external callback system gives the abstraction. */
     thrd_t *thrd = (thrd_t *)arg;
     struct timespec next_act;
     void *context;
 
     context = thrd->info.context;
 
+    /* If the user declared an initialization function we execute it. */
     if (thrd->info.init) {
         if (thrd->info.init(context)) {
+            /* The user aborted thread startup. If there's a destructor
+             * callback it's time to call it. */
             if (thrd->info.destroy) {
                 thrd->info.destroy(context);
             }
@@ -77,6 +87,7 @@ void * thread_routine (void * arg)
         }
     }
 
+    /* Wait delayed activation. */
     rtutils_wait(&thrd->start);
 
     /* Periodic loop: at each cycle the next absoute activation time is
@@ -86,7 +97,8 @@ void * thread_routine (void * arg)
         rtutils_time_increment(&next_act, &thrd->info.period);
 
         if (thrd->info.callback(context)) {
-            /* Thread required to shut down */
+            /* Thread required to shut down. If there's a destructor
+             * callback it shall be called now. */
             if (thrd->info.destroy) {
                 thrd->info.destroy(context);
             }
@@ -98,6 +110,7 @@ void * thread_routine (void * arg)
     pthread_exit(NULL);
 }
 
+/* Thread startup */
 static
 int startup(thrd_t *thrd, struct timespec *enabtime)
 {   
@@ -132,6 +145,7 @@ int startup(thrd_t *thrd, struct timespec *enabtime)
     pthread_attr_destroy(&attr);
     if (err != 0) return err;
 
+    /* Activation achieved: update flags. */
     thrd->status |= THRD_ALIVE;
     return 0;
 }
@@ -140,6 +154,7 @@ int thrd_add (thrd_pool_t *pool, const thrd_info_t * new_thrd)
 {
     thrd_t *item;
 
+    /* There's no pending error */
     assert((pool->status & THRD_ERR_ALL) == 0);
     assert(new_thrd->callback);
 
@@ -155,6 +170,8 @@ int thrd_add (thrd_pool_t *pool, const thrd_info_t * new_thrd)
     item->status = THRD_INITIALIZED;
     memcpy((void *)&item->info, (const void *)new_thrd,
            sizeof(thrd_info_t));
+
+    /* New thread is added to the thread list */
     pool->threads = dlist_append(pool->threads, (void *)item);
 
     return 0;
@@ -169,6 +186,8 @@ int prio_cmp (const thrd_t *t0, const thrd_t *t1)
     return rtutils_time_cmp(&t0->info.period, &t1->info.period);
 }
 
+/* Sorts the list basing on the period, getting a rate-monotonic priority
+ * assignment */
 static
 int set_rm_priorities (dlist_t **threads, int minprio)
 {
@@ -179,6 +198,7 @@ int set_rm_priorities (dlist_t **threads, int minprio)
     ts = *threads = dlist_sort(*threads, (dcmp_func_t) prio_cmp);
     i = dlist_iter_new(&ts);
 
+    /* Assign priorities */
     while (diter_hasnext(i)) {
         thrd_t *t;
 
@@ -188,14 +208,6 @@ int set_rm_priorities (dlist_t **threads, int minprio)
     dlist_iter_free(i);
     return 0;
 }
-
-/* TODO Funny future implementation, but not implemented. */
-#if 0
-void thrd_stop (thrd_pool_t *pool)
-{
-
-}
-#endif
 
 int thrd_start (thrd_pool_t *pool)
 {
@@ -208,17 +220,21 @@ int thrd_start (thrd_pool_t *pool)
         return -1;
     }
 
+    /* We need to bulid the priority set the first time.
+     *
+     * Currently this "first time" check is useless, since for the moment
+     * this structure is not supporting thread stopping.
+     */
     if ((pool->status & THRD_POOL_SORTED) == 0) {
-        /* We need to bulid the priority set the first time! */
         if (set_rm_priorities(&pool->threads, pool->minprio) == -1) {
             pool->status |= THRD_ERR_NULLPER;
             return -1;
         }
     }
 
+    /* Start each thread. */
     pool->status |= THRD_POOL_ACTIVE;
     i = dlist_iter_new(&pool->threads);
-
     rtutils_get_now(&now);
     while (diter_hasnext(i)) {
         err = startup((thrd_t *) diter_next(i), &now);
@@ -253,7 +269,7 @@ const char * thrd_strerr (thrd_pool_t *pool, thrd_err_t err)
 thrd_err_t thrd_interr (thrd_pool_t *pool)
 {
     uint8_t status = pool->status;
-    pool->status &= ~THRD_ERR_ALL;
+    pool->status &= ~THRD_ERR_ALL;  /* Reset pending errors */
     return status & THRD_ERR_ALL;
 }
 

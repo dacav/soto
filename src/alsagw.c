@@ -63,6 +63,8 @@ int init_soundcard (snd_pcm_t *handle, const samp_info_t *spec, unsigned *rate,
     return 0;
 }
 
+/* Returns the period for the sampling thread based on the given sampling
+ * specification. */
 static
 struct timespec build_period (const samp_info_t *spec)
 {

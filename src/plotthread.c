@@ -38,7 +38,7 @@ struct timespec build_period (const samp_info_t *spec)
 }
 
 struct plotth_data {
-    thdqueue_t * input;
+    thdqueue_t * input; /* Input queue */
     plot_t plot;
     unsigned rate;
 

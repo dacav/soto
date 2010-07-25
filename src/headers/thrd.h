@@ -101,6 +101,7 @@ typedef struct {
     int minprio;             /**< Minimum priority */
 } thrd_pool_t;
 
+/** Possible errors */
 typedef enum {
     THRD_ERR_LIBRARY  = 1 << 0,     /**< Library error */
     THRD_ERR_CLOSED   = 1 << 1,     /**< Added thread on a running pool */
@@ -150,7 +151,7 @@ int thrd_add (thrd_pool_t *pool, const thrd_info_t * new_thrd);
  */
 int thrd_start (thrd_pool_t *pool);
 
-/** Get information on the error.
+/** Get information on the pending error, if any.
  *
  * After this call the internal error-keeping structure of the pool gets
  * resetted.

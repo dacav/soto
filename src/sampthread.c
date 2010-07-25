@@ -28,17 +28,21 @@
 #include "headers/constants.h"
 #include "headers/rtutils.h"
 
+/* Sampling thread internal information set. */
 struct sampth_data {
-    snd_pcm_t *pcm;
-    samp_frame_t * buffer;
-    snd_pcm_uframes_t bufsize;  // in frames.
-    thdqueue_t *output;
+    snd_pcm_t *pcm;             /* Alsa handler; */
+    samp_frame_t * buffer;      /* Reading buffer; */
+    snd_pcm_uframes_t bufsize;  /* And its size; */
+    thdqueue_t *output;         /* Output queue for sampled data; */
 
     struct {
-        int active;
-        pthread_t self;
+        int active;             /* 1 if the thread is running; */
+        pthread_t self;         /* Handler used for termination; */
     } thread;
 
+    /* Sometimes alsa has tantrums and issues EAGAIN on reading (despite
+     * this is not documented anywere, LOL). In this case we wait up to
+     * this value before giving up */
     uint64_t alsa_wait_max;
 };
 
@@ -91,6 +95,8 @@ sampth_frameset_t * sampth_frameset_dup (const sampth_frameset_t *set)
     return build_frameset(set->nframes, set->frames);
 }
 
+/* This callback is pushed into the thread cleanup system. Acts like a
+ * distructor, but works internally. This is better explained later. */
 static
 void destroy_cb (void *arg)
 {
@@ -102,6 +108,7 @@ void destroy_cb (void *arg)
     free(arg);
 }
 
+/* Thread initialization. */
 static
 int init_cb (void *arg)
 {
@@ -114,6 +121,7 @@ int init_cb (void *arg)
     return 0;
 }
 
+/* This function hides Alsa under weird stuff the hood. */
 static
 int alsa_read (snd_pcm_t *pcm, samp_frame_t *buffer,
                snd_pcm_uframes_t bufsize, int maxwait)
@@ -159,6 +167,7 @@ int alsa_read (snd_pcm_t *pcm, samp_frame_t *buffer,
     }
 }
 
+/* Core of the sampling */
 static
 int thread_cb (void *arg)
 {
@@ -171,19 +180,31 @@ int thread_cb (void *arg)
     nread = alsa_read(ctx->pcm, ctx->buffer, ctx->bufsize,
                       ctx->alsa_wait_max);
     if (nread <= 0) {
-        LOG_FMT("Alsa fails miserably: %s", snd_strerror(nread));
+        LOG_FMT("Alsa fails: %s", snd_strerror(nread));
     } else { 
+        /* We were able to read some useful data, which is pushed into the
+         * output queue. */
         sampth_frameset_t *topush;
 
         topush = build_frameset(nread, ctx->buffer);
         if (thdqueue_insert(ctx->output, (void *)topush)
                 == THDQUEUE_UNALLOWED) {
+            /* This happens because someone required the data termination
+             * through the queue. Actually termination works differently,
+             * but here I don't assume anything about who is manipulating
+             * the queue externally. */
+
+            /* This element has not been pushed, so let's destroy it before
+             * exiting. */
             sampth_frameset_destroy(topush);
-            return 1;   // Queue dropped! Termination.
+
+            /* By returning 1 I ask the thread to be terminated. */
+            return 1;
         }
     }
 
-    // Check cancellations.
+    /* Check cancellations. If it is the case the destroy_cb will manage
+     * memory deallocation. */
     pthread_cleanup_push(destroy_cb, arg);
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
     pthread_testcancel();
@@ -220,9 +241,11 @@ int sampth_subscribe (sampth_handler_t *handler, thrd_pool_t *pool,
     thi.delay.tv_sec = STARTUP_DELAY_SEC;
     thi.delay.tv_nsec = STARTUP_DELAY_nSEC;
 
-    /* Period management */
+    /* Period management. */
     period = samp_get_period(samp);
     ctx->alsa_wait_max = rtutils_time2ns(period) / ALSA_WAIT_PROPORTION;
+
+    /* Period request to the thread pool */
     memcpy((void *) &thi.period, (const void *) period,
             sizeof(struct timespec));
 
@@ -241,10 +264,11 @@ int sampth_sendkill (sampth_handler_t handler)
     if (handler->thread.active) {
         int err;
         
-        err = pthread_cancel(handler->thread.self);
-        /* Note: the thread pool (see headers/thrd.h) is in charge of
-         * joining the thread
+        /* The cancellation will be checked explicitly in thread_cb().
+         * Also note that the thread pool (see headers/thrd.h) is in
+         * charge of joining the thread.
          */
+        err = pthread_cancel(handler->thread.self);
 
         assert(!err);
         return 0;

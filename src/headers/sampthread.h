@@ -18,6 +18,13 @@
  *
  */
 
+/*
+
+   This module provieds a clean interface to pool (headers/thrd.h)
+   subscription of the thread in charge of doing the sampling phase.
+
+ */
+
 #ifndef __defined_headers_sampth_h
 #define __defined_headers_sampth_h
 #ifdef __cplusplus

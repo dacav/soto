@@ -18,6 +18,14 @@
  *
  */
 
+/*
+
+   This module restricts the access to plot.h and provides a clean
+   interface that allows to plot a representation composed of two
+   graphics.
+
+ */
+
 #ifndef __defined_headers_plotting_h
 #define __defined_headers_plotting_h
 #ifdef __cplusplus
@@ -30,18 +38,42 @@ extern "C" {
 
 #include "headers/alsagw.h"
 
+/** Plotting system.
+ *
+ * The plotter shows two graphics, one for each of the two channels.
+ */
 typedef struct {
-    plPlotter * plot;
-    samp_frame_t * circular;
-    size_t bufsize;
-    size_t stored;
-    unsigned cursor;
+    plPlotter * plot;           /**< Libplot handler; */
+    samp_frame_t * circular;    /**< Circular buffer for plotting; */
+    size_t bufsize;             /**< Size of the circular buffer; */
+    size_t stored;              /**< Number of element stored in the
+                                 *   buffer */
+    unsigned cursor;            /**< Current position into the buffer. */
 } plot_t;
 
+/** Plotter constructor.
+ *
+ * This function spawns a X11 window on which the plot will be displayed.
+ *
+ * @param p The plotter to be initialized;
+ * @param bufsize The number of backward values showed during plotting.
+ */
 void plot_init (plot_t *p, size_t bufsize);
 
+/** Add a new frame to plotting.
+ *
+ * This function directly updates the X11 window with the two new values
+ * contained into the second parameter.
+ *
+ * @param p The plotter;
+ * @param frame The new frame to be buffered.
+ */
 void plot_add_frame (plot_t *p, samp_frame_t *frame);
 
+/** Plotter Destructor
+ *
+ * @param p The plotter to be destroyed.
+ */
 void plot_destroy (plot_t *p);
 
 #ifdef __cplusplus

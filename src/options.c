@@ -139,22 +139,6 @@ void set_defaults (opts_t *so)
     so->policy = SAMP_ACCEPT_RATE;
 }
 
-#if 0
-static
-int to_thrdinfo (const char *arg, opts_thrd_t *thr)
-{
-    uint64_t p;
-
-    if (sscanf(arg, "%llu", (long long *) &p) != 1)
-        return -1;
-    if (p == 0)
-        return -1;
-
-    thr->period = p;
-    return 0;
-}
-#endif
-
 extern char *optarg;
 
 int opts_parse (opts_t *so, int argc, char * const argv[])
@@ -208,8 +192,7 @@ int opts_parse (opts_t *so, int argc, char * const argv[])
                 break;
             case 'c':
                 if (check_optarg(optarg, avail_policy) == 0) {
-                        printf("not accepting rate\n");
-                        so->policy &= ~SAMP_ACCEPT_RATE;
+                    so->policy &= ~SAMP_ACCEPT_RATE;
                 }
                 break;
             case 'h':

@@ -18,6 +18,12 @@
  *
  */
 
+/*
+
+   This module provieds an interface to the alsa system.
+
+ */
+
 #ifndef __defined_headers_alsagw_h
 #define __defined_headers_alsagw_h
 #ifdef __cplusplus
