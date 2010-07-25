@@ -90,17 +90,21 @@ int main (int argc, char **argv)
     /* Init the sampling dispatching system */
     disp_init(&dispatcher, queue, (disp_dup_t)sampth_frameset_dup);
 
-    /* Subscribe the average + plot system */
-    if ((err = plotth_subscribe(&pool, disp_new_hook(&dispatcher),
-                                &sampinfo)) != 0) {
-        thrd_err_t err = thrd_interr(&pool); 
-
-        ERR_FMT("Adding second reader: %s", thrd_strerr(&pool, err));
-        exit(EXIT_FAILURE);
+    /* Subscribe the average + plot system, how many times as required by
+     * the user. */
+    while (opts.nplot --) {
+        if ((err = plotth_subscribe(&pool, disp_new_hook(&dispatcher),
+                                    &sampinfo)) != 0) {
+            thrd_err_t err = thrd_interr(&pool); 
+    
+            ERR_FMT("Adding second reader: %s", thrd_strerr(&pool, err));
+            exit(EXIT_FAILURE);
+        }
     }
 
     /* This is not elegant, but I have to deliver */
-    LOG_MSG("This program will start in two seconds and terminate after 1 minute");
+    LOG_MSG("This program will start in two seconds and terminate after "
+            "1 minute");
     sleep(2);
 
     /* Starting the pool */

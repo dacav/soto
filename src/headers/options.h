@@ -55,7 +55,8 @@ typedef struct {
     } mode;                     /**< Number of input channels */
 
     unsigned rate;              /**< Sample rate; */
-    unsigned nsamp;             /**< Number of samples buffered */
+    size_t nsamp;               /**< Number of samples buffered; */
+    size_t nplot;               /**< Number of plotters; */
     
     /** Defines the policy of the initialization, @see samp_policy_t */
     samp_policy_t policy;

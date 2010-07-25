@@ -63,29 +63,40 @@ void update_plot (struct plotth_data *ctx, sampth_frameset_t *set)
     int i, j = 0;
 
     nframes = set->nframes;
+
+    /* The set might be more than PLOT_AVERAGE_LEN samples, so we may need
+     * to build more than one average. We take in account also samples
+     * left from previous averages. */
     while (nframes + ctx->nread >= PLOT_AVERAGE_LEN) {
         samp_frame_t frame;
 
+        /* Summing values for channel 0 and channel 1 until we reach the
+         * number of element in the average. */
         for (i = ctx->nread; i < PLOT_AVERAGE_LEN; i ++) {
             ctx->accum_c0 = set->frames[j].ch0;
             ctx->accum_c1 = set->frames[j].ch1;
-
             j ++;
         }
+
+        /* Plotting the obtained result. */
         frame.ch0 = ctx->accum_c0 / PLOT_AVERAGE_LEN;
         frame.ch1 = ctx->accum_c1 / PLOT_AVERAGE_LEN;
         plot_add_frame(&ctx->plot, &frame);
+
+        /* Preparing for next average. */
         nframes -= PLOT_AVERAGE_LEN;
         nframes += ctx->nread;
         ctx->accum_c0 = ctx->accum_c1 = ctx->nread = 0;
     }
+
+    /* Some data might be left, so they will be part of the next
+     * sampling */
     for (i = 0; i < nframes; i ++) {
         ctx->accum_c0 = set->frames[j].ch0;
         ctx->accum_c1 = set->frames[j].ch1;
         j ++;
     }
     ctx->nread = nframes;
-
 }
 
 static

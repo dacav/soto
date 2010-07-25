@@ -33,7 +33,7 @@ extern "C" {
 
 #include <stdint.h>
 
-/** Number of seconds per nanoseconds */
+/** Number of seconds per nanoseconds. */
 #define SECOND_NS 1000000000UL
 
 /** Startup delay for all threads, seconds. */
@@ -50,16 +50,16 @@ extern "C" {
 /** Size of the graphical window used for plotting. */
 #define PLOT_BITMAPSIZE         "500x300"
 
-/** Minimum plotable value */
+/** Minimum plotable value. */
 #define PLOT_MIN_Y              (2 * INT16_MAX)
 
-/** Maximum plotable value */
+/** Maximum plotable value. */
 #define PLOT_MAX_Y              (2 * INT16_MIN)
 
-/** Offset from canvas center of first plot */ 
+/** Offset from canvas center of first plot. */ 
 #define PLOT_OFFSET_UP          INT16_MAX
 
-/** Offset from canvas center of second plot */ 
+/** Offset from canvas center of second plot. */ 
 #define PLOT_OFFSET_DOWN        INT16_MIN
 
 /** Multiplication factor (plotthread.c).
@@ -69,13 +69,13 @@ extern "C" {
  */
 #define PLOT_PERIOD_TIMES       10
 
-/** Number of sampling used in averaging samples */
+/** Number of sampling used in averaging samples. */
 #define PLOT_AVERAGE_LEN        50
 
-/** Default rate used in the options module */
+/** Default rate used in the options module. */
 #define DEFAULT_RATE            44100
 
-/** Default device used in the options module */
+/** Default device used in the options module. */
 #define DEFAULT_DEVICE          "hw:0,0"
 
 /** Default minimum priority used in the options module
@@ -84,7 +84,10 @@ extern "C" {
  */
 #define DEFAULT_MINPRIO         0
 
-/** Proportion between sampling and plotting periods */
+/** Default number of plotting windows. */
+#define DEFAULT_PLOTS_NUMBER     1
+
+/** Proportion between sampling and plotting periods. */
 #define DEFAULT_PERIOD_SLOTS    30
 
 #ifdef __cplusplus

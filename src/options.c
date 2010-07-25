@@ -31,12 +31,13 @@
 #include <sched.h>
 #include <assert.h>
 
-static const char optstring[] = "d:r:m:p:B:c:h";
+static const char optstring[] = "d:r:m:N:p:B:c:h";
 static const struct option longopts[] = {
     {"alsa-dev", 1, NULL, 'd'},
     {"alsa-rate", 1, NULL, 'r'},      // rate 
     {"alsa-mode", 1, NULL, 'm'},      // mono, stereo
     {"min-prio", 1, NULL, 'p'},
+    {"plotters", 1, NULL, 'N'},
     {"sample-buffer", 1, NULL, 'B'},
     {"constraint", 1, NULL, 'c'},
     {"help", 0, NULL, 'h'},
@@ -64,9 +65,12 @@ static const char help [] =
 "  --sample-buffer={count} | -B {count}\n"
 "        Specify the number of samples (according to the '--alsa-rate'\n"
 "        parameter) to be buffered\n\n"
-"  --constraint={ fixrate | fixperiod } | -c { fixrate | fixperiod }\n"
-"        Require the program to fail if the given '--alsa-rate' and\n"
-"        '--sampler-period' options cannot be honored;\n\n"
+"  --constraint={fixrate | ... } | -c {fixrate | ... }\n"
+"        Require the program to fail if the given options cannot be\n"
+"        honored. For the time being this is only the case for the\n"
+"        sampling rate\n\n"
+"  --plotters={number} | -N {number}\n"
+"        Number of plotters plotting the data\n\n"
 "  --min-prio={priority}\n"
 "        Specify the realtime priority for the thread having the longest\n"
 "        sampling period (default 0, required a positive integer);\n\n"
@@ -136,6 +140,7 @@ void set_defaults (opts_t *so)
     so->rate = DEFAULT_RATE;
     so->minprio = DEFAULT_MINPRIO;
     so->nsamp = DEFAULT_PERIOD_SLOTS;
+    so->nplot = DEFAULT_PLOTS_NUMBER;
     so->policy = SAMP_ACCEPT_RATE;
 }
 
@@ -161,8 +166,17 @@ int opts_parse (opts_t *so, int argc, char * const argv[])
                         so->mode = STEREO;
                         break;
                     default:
-                        notify_error(argv[0], "invalid mode: '%s'", optarg);
+                        notify_error(argv[0], "invalid mode: '%s'",
+                                     optarg);
                         return -1;
+                }
+                break;
+            case 'N':
+                if (to_unsigned(optarg, (unsigned *)&so->nplot) == -1) {
+                    notify_error(argv[0],
+                                 "invalid number of plotters: '%s'",
+                                 optarg);
+                    return -1;
                 }
                 break;
             case 'r':
@@ -172,8 +186,10 @@ int opts_parse (opts_t *so, int argc, char * const argv[])
                 }
                 break;
             case 'B':
-                if (to_unsigned(optarg, &so->nsamp) == -1) {
-                    notify_error(argv[0], "invalid buffered samples count: '%s'", optarg);
+                if (to_unsigned(optarg,(unsigned *)&so->nsamp) == -1) {
+                    notify_error(argv[0],
+                                 "invalid buffered samples count: '%s'",
+                                 optarg);
                     return -1;
                 }
                 break;
