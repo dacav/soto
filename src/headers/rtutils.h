@@ -18,11 +18,11 @@
  *
  */
 
-/*
-
-   This module provieds some handy shortcuts for real-time related data
-   structures (like 'struct timespec').
-
+/** @file rtutils.h
+ *
+ * This module provieds some handy shortcuts for real-time related data
+ * structures (like 'struct timespec').
+ *
  */
 
 #ifndef __defined_headers_rtutils_h
@@ -53,7 +53,8 @@ uint64_t rtutils_time2ns (const struct timespec *n)
 
 /** Convert nanoseconds into 'struct timespec'
  *
- * @param n The time in nsec;
+ * @param ns The time in nsec;
+ *
  * @return The time in sec + nsec.
  */
 struct timespec rtutils_ns2time (uint64_t ns);

@@ -18,10 +18,9 @@
  *
  */
 
-/*
-
-   This module provieds an options parsing mechanism based on getopt.
-
+/** @file options.h
+ *
+ * This module provieds an options parsing mechanism based on getopt.
  */
 
 
@@ -49,14 +48,17 @@ typedef struct {
     /* ALSA related options */
 
     const char *device;         /**< PCM device */
+
     enum {
-        MONO, STEREO
+        MONO,                   /**< One channel */
+        STEREO                  /**< Two channels */
     } mode;                     /**< Number of input channels */
+
     unsigned rate;              /**< Sample rate; */
     unsigned nsamp;             /**< Number of samples buffered */
+    
+    /** Defines the policy of the initialization, @see samp_policy_t */
     samp_policy_t policy;
-
-    /* Threading related options */
 
     /** Minimum priority value to be used. This will be added to the
      *  result of the sched_get_priority_min() syscall.

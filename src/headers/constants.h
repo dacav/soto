@@ -18,13 +18,12 @@
  *
  */
 
-/*
-
-    This header provides various constant definitions.
-    TODO: Configuration via autotools.
-
+/** @file constants.h
+ *
+ *  This header provides various constant definitions.
  */
 
+// TODO: Configuration via autotools.
 
 #ifndef __defined_headers_constants_h
 #define __defined_headers_constants_h
@@ -34,40 +33,59 @@ extern "C" {
 
 #include <stdint.h>
 
+/** Number of seconds per nanoseconds */
 #define SECOND_NS 1000000000UL
 
-/* Startup delay for all threads. This should be enough for completing all
- * the operations, I guess.
- */
+/** Startup delay for all threads, seconds. */
 #define STARTUP_DELAY_SEC       0
+
+/** Startup delay for all threads, nanoseconds. */
 #define STARTUP_DELAY_nSEC      500000
 
-/* Proportion divisor between sampling thread period and sampling wait in
+/** Proportion divisor between sampling thread period and sampling wait in
  * case of failure. This will be multiplied by period in sampthread.c.
  */
 #define ALSA_WAIT_PROPORTION    2
 
-/* Size of the graphical window used for plotting. Those constants define
- * the proportions of the plotting window. */
+/** Size of the graphical window used for plotting. */
 #define PLOT_BITMAPSIZE         "500x300"
+
+/** Minimum plotable value */
 #define PLOT_MIN_Y              (2 * INT16_MAX)
+
+/** Maximum plotable value */
 #define PLOT_MAX_Y              (2 * INT16_MIN)
+
+/** Offset from canvas center of first plot */ 
 #define PLOT_OFFSET_UP          INT16_MAX
+
+/** Offset from canvas center of second plot */ 
 #define PLOT_OFFSET_DOWN        INT16_MIN
 
-/* Multiplication factor (plotthread.c): the period of the plotter will be
- * a multiple of the sampling period w.r.t. this constant */
+/** Multiplication factor (plotthread.c).
+ *
+ * The period of the plotter will be a multiple of the sampling period
+ * w.r.t. this constant.
+ */
 #define PLOT_PERIOD_TIMES       10
 
-/* Number of sampling used for average */
+/** Number of sampling used in averaging samples */
 #define PLOT_AVERAGE_LEN        50
 
-/* Default configuration used in the options module */
+/** Default rate used in the options module */
 #define DEFAULT_RATE            44100
+
+/** Default device used in the options module */
 #define DEFAULT_DEVICE          "hw:0,0"
-#define DEFAULT_MINPRIO         0       /* See options.h, opts_t::minprio */
-#define DEFAULT_PERIOD_SLOTS    30      /* Proportion between sampling and
-                                           plotting periods */
+
+/** Default minimum priority used in the options module
+ *
+ * @see opts_t::minprio.
+ */
+#define DEFAULT_MINPRIO         0
+
+/** Proportion between sampling and plotting periods */
+#define DEFAULT_PERIOD_SLOTS    30
 
 #ifdef __cplusplus
 }

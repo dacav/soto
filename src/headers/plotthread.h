@@ -18,12 +18,12 @@
  *
  */
 
-/*
-
-   This module provieds a clean interface to pool (headers/thrd.h)
-   subscription of the thread in charge of doing the data elaboration
-   phase.
-
+/** @file plotthread.h
+ *
+ * This module provieds a clean interface to pool (headers/thrd.h)
+ * subscription of the thread in charge of doing the data elaboration
+ * phase.
+ *
  */
 
 #ifndef __defined_headers_plotthread_h

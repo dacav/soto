@@ -18,12 +18,12 @@
  *
  */
 
-/*
-
-   This module restricts the access to plot.h and provides a clean
-   interface that allows to plot a representation composed of two
-   graphics.
-
+/** @file plotting.h
+ *
+ * This module restricts the access to plot.h and provides a clean
+ * interface that allows to plot a representation composed of two
+ * graphics.
+ *
  */
 
 #ifndef __defined_headers_plotting_h

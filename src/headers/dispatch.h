@@ -18,10 +18,13 @@
  *
  */
 
-/*
-
-   This module provieds 
-
+/** @file dispatch.h
+ *
+ * This module provieds a dispatching system based on thdqueues. It
+ * implements a thread which extracts data from an incoming thread queue,
+ * builds copies of the item and sends a copy for each outgoing thread
+ * queue.
+ *
  */
 
 #ifndef __defined_headers_dispatch_h
@@ -34,6 +37,7 @@ extern "C" {
 #include <dacav/dacav.h>
 #include <pthread.h>
 
+/** Copy constructor callback. */
 typedef void * (* disp_dup_t) (void *);
 
 typedef struct {

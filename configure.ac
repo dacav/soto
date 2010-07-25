@@ -39,6 +39,7 @@ AC_CHECK_FUNCS([strerror])
 AC_FUNC_MALLOC
 
 AC_CONFIG_FILES([Makefile
-                 src/Makefile])
+                 src/Makefile
+                 doc/Doxyfile:doc/Doxyfile.in])
 
 AC_OUTPUT

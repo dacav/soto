@@ -18,10 +18,9 @@
  *
  */
 
-/*
-
-   This module provieds an interface to the alsa system.
-
+/** @file alsagw.h
+ *
+ * This module provieds an interface to the alsa system.
  */
 
 #ifndef __defined_headers_alsagw_h
@@ -36,11 +35,15 @@ extern "C" {
 #include <time.h>
 #include <stdint.h>
 
+/** Specification used by audiocard initialization.
+ *
+ * @see samp_init.
+ */
 typedef struct {
-    const char *device;
-    unsigned rate;
-    unsigned nsamp;
-    uint8_t channels;
+    const char *device;         /**< Device name; */
+    unsigned rate;              /**< Required sampling rate; */
+    unsigned nsamp;             /**< Number of samples per buffer; */
+    uint8_t channels;           /**< Number of channels. */
 } samp_info_t;
 
 /** Policy for parameter changing.
@@ -53,14 +56,39 @@ typedef enum {
     SAMP_ACCEPT_RATE = 1 << 0   /**< Accept the suggested sampling rate */
 } samp_policy_t;
 
+/** Sampling system descriptor.
+ *
+ * This must be allocated but managed trough proper functions.
+ *
+ * @see samp_init.
+ */
 typedef struct {
-    snd_pcm_t *pcm;
+    snd_pcm_t *pcm;             /**< Alsa handler */
 
+    /** Number of frames that can be buffered with the given sampling
+     *  specification.
+     *
+     * This is an auxiliary information that shall be used by other
+     * modules and read trough the proper getter.
+     *
+     * @see samp_info_t.
+     * @see samp_get_period.
+     */
     snd_pcm_uframes_t nframes;
+
+    /** Number of frames that can be buffered with the given sampling
+     *  specification.
+     *
+     * This is an auxiliary information that shall be used by other
+     * modules and read trough the proper getter.
+     *
+     * @see samp_info_t.
+     * @see samp_get_period.
+     */
     struct timespec period;
 
-    uint8_t status;
-    int err;
+    uint8_t status;             /**< Status flags, for internal use */
+    int err;                    /**< Library error, for internal use */
 } samp_t;
 
 /** Error type for sampling */
@@ -93,7 +121,7 @@ typedef struct {
  *
  * @see samp_policy_t.
  *
- * @return 0 on success, on failure.
+ * @return 0 on success, another value on failure.
  */
 int samp_init (samp_t *s, const samp_info_t *spec, samp_policy_t accept);
 
@@ -128,22 +156,26 @@ snd_pcm_t * samp_get_pcm (const samp_t *samp);
  * @see samp_err_t
  * @see samp_strerr
  *
- * @param s The sampler for which the last call returned error;
+ * @param s The sampler for which the last call returned error.
+ *
  * @return The error.
  */
 samp_err_t samp_interr (samp_t *s);
 
 /** Get error description string.
  *
- * @param err The error;
- * @return The internal error description for the errors, strerror(3)
- *         return value when err is SAMP_ERR_LIBRARY.
+ * @param s The sampler;
+ * @param err The error obtained by samp_interr.
+ *
+ * @return The internal error description for the errors. If err is
+ *         samp_err_t::SAMP_ERR_LIBRARY the return value of strerror(3)
+ *         will be returned instead.
  */
 const char * samp_strerr (samp_t *s, samp_err_t err);
 
-/** Destroyer
+/** Destroyer.
  *
- * @s The sampler to be destroyed.
+ * @param s The sampler to be destroyed.
  */
 void samp_destroy (samp_t *s);
 

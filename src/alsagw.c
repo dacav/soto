@@ -27,8 +27,8 @@
     ( SAMP_ERR_LIBRARY | SAMP_ERR_RATE | SAMP_ERR_PERIOD )
 
 static
-int init_soundcard (snd_pcm_t *handle, const samp_info_t *spec, unsigned *rate,
-                    snd_pcm_uframes_t *nframes)
+int init_soundcard (snd_pcm_t *handle, const samp_info_t *spec,
+                    unsigned *rate, snd_pcm_uframes_t *nframes)
 {
     snd_pcm_hw_params_t *hwparams;
     int dir = 0, err;
