@@ -10,7 +10,8 @@ soto_SOURCES = main.c \
                thrd.c headers/thrd.h \
                plotthread.c headers/plotthread.h \
                plotting.c headers/plotting.h \
-               headers/logging.h
+               headers/logging.h \
+               headers/constants.h
 
 soto_LDADD = -lasound -ldacav -lrt -lthdacav -lplot #-lefence
 
