@@ -22,6 +22,7 @@
 #include <alsa/asoundlib.h>
 #include <thdacav/thdacav.h>
 #include <stdint.h>
+#include <pthread.h>
 
 #include "headers/sampthread.h"
 #include "headers/logging.h"
@@ -30,10 +31,13 @@
 
 /* Sampling thread internal information set. */
 struct sampth_data {
-    snd_pcm_t *pcm;             /* Alsa handler; */
-    samp_frame_t * buffer;      /* Reading buffer; */
-    snd_pcm_uframes_t bufsize;  /* And its size; */
-    thdqueue_t *output;         /* Output queue for sampled data; */
+    snd_pcm_t *pcm;                     /* Alsa handler; */
+
+    samp_frame_t * buffer;              /* Reading buffer; */
+    snd_pcm_uframes_t slot_size;        /* Size of a sample; */
+    size_t nslots;                    /* Room for samples; */
+    unsigned slot;                      /* Slot cursor; */
+    pthread_mutex_t mux;                /* Mutex protecting the cursor; */
 
     struct {
         int active;             /* 1 if the thread is running; */
@@ -42,58 +46,9 @@ struct sampth_data {
 
     /* Sometimes alsa has tantrums and issues EAGAIN on reading (despite
      * this is not documented anywere, LOL). In this case we wait up to
-     * this value before giving up */
+     * this value before giving up. */
     uint64_t alsa_wait_max;
 };
-
-/* This define removes the optimization for the following two functions:
- * the optimimization i's not working for the moment. It's easy to fix it
- * but not a development priority. */
-#define UNEFFICIENT_BUT_WORKING
-
-static
-sampth_frameset_t * build_frameset (snd_pcm_uframes_t size,
-                                    const samp_frame_t *buf)
-{
-    sampth_frameset_t *ret;
-#ifndef UNEFFICIENT_BUT_WORKING
-    // FIXME this is buggy
-    uint8_t *pos;
-
-    /* All-in-one to reduce the number of malloc. This is not very clean,
-     * but I guess it's better in a real-time situation.
-     */
-    assert(size > 0);
-    ret = malloc(sizeof(sampth_frameset_t) + size * sizeof(samp_frame_t));
-    assert(ret);
-
-    pos = (uint8_t *) ret;
-    pos += sizeof(samp_frame_t);
-    ((sampth_frameset_t *)ret)->nframes = size;
-    ((sampth_frameset_t *)ret)->frames = (samp_frame_t *)pos;
-
-    memcpy((void *)pos, (const void *)buf, size * sizeof(samp_frame_t));
-#else
-    ret = malloc(sizeof(sampth_frameset_t));
-    ret->nframes = size;
-    ret->frames = malloc(sizeof(samp_frame_t) * size);
-#endif
-
-    return ret;
-}
-
-void sampth_frameset_destroy (sampth_frameset_t *set)
-{
-#ifdef UNEFFICIENT_BUT_WORKING
-    free(set->frames);
-#endif
-    free(set);
-}
-
-sampth_frameset_t * sampth_frameset_dup (const sampth_frameset_t *set)
-{
-    return build_frameset(set->nframes, set->frames);
-}
 
 /* This callback is pushed into the thread cleanup system. Acts like a
  * distructor, but works internally. This is better explained later. */
@@ -102,7 +57,7 @@ void destroy_cb (void *arg)
 {
     struct sampth_data *ctx = (struct sampth_data *) arg;
 
-    thdqueue_enddata(ctx->output);
+    pthread_mutex_destroy(&ctx->mux);
 
     free((void *)ctx->buffer);
     free(arg);
@@ -121,7 +76,7 @@ int init_cb (void *arg)
     return 0;
 }
 
-/* This function hides Alsa under weird stuff the hood. */
+/* This function hides Alsa weird bogus under the hood. */
 static
 int alsa_read (snd_pcm_t *pcm, samp_frame_t *buffer,
                snd_pcm_uframes_t bufsize, int maxwait)
@@ -172,35 +127,18 @@ static
 int thread_cb (void *arg)
 {
     struct sampth_data *ctx = (struct sampth_data *) arg;
-    unsigned bufsize;
+    unsigned slot;
     int nread;
 
-    bufsize = (unsigned) ctx->bufsize;
-
-    nread = alsa_read(ctx->pcm, ctx->buffer, ctx->bufsize,
+    pthread_mutex_lock(&ctx->mux);
+    slot = ctx->slot;
+    nread = alsa_read(ctx->pcm, ctx->buffer + slot, ctx->slot_size,
                       ctx->alsa_wait_max);
+    ctx->slot = (slot + 1) % ctx->nslots;
+    pthread_mutex_unlock(&ctx->mux);
+
     if (nread <= 0) {
         LOG_FMT("Alsa fails: %s", snd_strerror(nread));
-    } else { 
-        /* We were able to read some useful data, which is pushed into the
-         * output queue. */
-        sampth_frameset_t *topush;
-
-        topush = build_frameset(nread, ctx->buffer);
-        if (thdqueue_insert(ctx->output, (void *)topush)
-                == THDQUEUE_UNALLOWED) {
-            /* This happens because someone required the data termination
-             * through the queue. Actually termination works differently,
-             * but here I don't assume anything about who is manipulating
-             * the queue externally. */
-
-            /* This element has not been pushed, so let's destroy it before
-             * exiting. */
-            sampth_frameset_destroy(topush);
-
-            /* By returning 1 I ask the thread to be terminated. */
-            return 1;
-        }
     }
 
     /* Check cancellations. If it is the case the destroy_cb will manage
@@ -215,7 +153,7 @@ int thread_cb (void *arg)
 }
 
 int sampth_subscribe (sampth_handler_t *handler, thrd_pool_t *pool,
-                      const samp_t *samp, thdqueue_t *output)
+                      const samp_t *samp, size_t scaling_factor)
 {
     thrd_info_t thi;
     struct sampth_data *ctx;
@@ -229,14 +167,18 @@ int sampth_subscribe (sampth_handler_t *handler, thrd_pool_t *pool,
     /* Note: the thread is in charge of freeing this before shutting
      *       down, unless everything fails on thrd_add().
      */
-    thi.context = malloc(sizeof(struct sampth_data));
+    thi.context = calloc(1, sizeof(struct sampth_data));
     assert(thi.context);
     ctx = (struct sampth_data *) thi.context;
-    ctx->output = output;
     ctx->pcm = samp_get_pcm(samp);
-    ctx->bufsize = samp_get_nframes(samp);
-    ctx->buffer = (samp_frame_t *) malloc(ctx->bufsize * sizeof(samp_frame_t));
     ctx->thread.active = 0;
+
+    ctx->nslots = scaling_factor;
+    ctx->slot_size = samp_get_nframes(samp);
+    ctx->buffer = (samp_frame_t *) calloc(scaling_factor * ctx->slot_size,
+                                          sizeof(samp_frame_t));
+    ctx->slot = 0;
+    pthread_mutex_init(&ctx->mux, NULL);
 
     thi.delay.tv_sec = STARTUP_DELAY_SEC;
     thi.delay.tv_nsec = STARTUP_DELAY_nSEC;
@@ -244,10 +186,7 @@ int sampth_subscribe (sampth_handler_t *handler, thrd_pool_t *pool,
     /* Period management. */
     period = samp_get_period(samp);
     ctx->alsa_wait_max = rtutils_time2ns(period) / ALSA_WAIT_PROPORTION;
-
-    /* Period request to the thread pool */
-    memcpy((void *) &thi.period, (const void *) period,
-            sizeof(struct timespec));
+    rtutils_time_copy(&thi.period, period);     /* Period request to the thread pool */
 
     if ((err = thrd_add(pool, &thi)) != 0) {
         free(ctx->buffer);
@@ -261,6 +200,9 @@ int sampth_subscribe (sampth_handler_t *handler, thrd_pool_t *pool,
 
 int sampth_sendkill (sampth_handler_t handler)
 {
+    if (handler == NULL) {
+        return -1;
+    }
     if (handler->thread.active) {
         int err;
         

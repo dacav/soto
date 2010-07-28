@@ -26,50 +26,51 @@
 #define SAMP_ERR_ALL \
     ( SAMP_ERR_LIBRARY | SAMP_ERR_RATE | SAMP_ERR_PERIOD )
 
+/* Information about this structure can be retrieved by looking at getters
+ * doxygen */
+struct samp {
+    snd_pcm_t *pcm;
+    unsigned rate;
+    snd_pcm_uframes_t nframes;
+    struct timespec period;
+};
+
 static
-int init_soundcard (snd_pcm_t *handle, const samp_info_t *spec,
-                    unsigned *rate, snd_pcm_uframes_t *nframes)
+int init_soundcard (snd_pcm_t *handle, unsigned *rate, uint8_t channels,
+                    snd_pcm_uframes_t *nframes, unsigned *period)
 {
     snd_pcm_hw_params_t *hwparams;
-    int dir = 0, err;
+    int err;
 
     snd_pcm_hw_params_alloca(&hwparams);
 
-    *rate = spec->rate;
-    err = snd_pcm_hw_params_set_rate_near(handle, hwparams, rate, &dir);
+    err = snd_pcm_hw_params_any(handle, hwparams);
     if (err < 0) return err;
 
-    err = snd_pcm_hw_params_any(handle, hwparams);
+    err = snd_pcm_hw_params_set_rate_near(handle, hwparams, rate, NULL);
     if (err < 0) return err;
 
     err = snd_pcm_hw_params_set_access(handle, hwparams,
                                        SND_PCM_ACCESS_RW_INTERLEAVED);
     if (err < 0) return err;
 
-    /* Only SND_PCM_FORMAT_S16_LE supported, for the moment */
     err = snd_pcm_hw_params_set_format(handle, hwparams,
                                        SND_PCM_FORMAT_S16_LE);
     if (err < 0) return err;
 
-    err = snd_pcm_hw_params_set_channels(handle, hwparams, spec->channels);
-    if (err < 0) return err;
-
-    err = snd_pcm_hw_params_get_buffer_size_min(hwparams, nframes);
+    err = snd_pcm_hw_params_set_channels(handle, hwparams, channels);
     if (err < 0) return err;
 
     err = snd_pcm_hw_params(handle, hwparams);
     if (err < 0) return err;
 
-    return 0;
-}
+    err = snd_pcm_hw_params_get_buffer_size_min(hwparams, nframes);
+    if (err < 0) return err;
 
-/* Returns the period for the sampling thread based on the given sampling
- * specification. */
-static
-struct timespec build_period (const samp_info_t *spec)
-{
-    uint64_t sample_time = SECOND_NS / spec->rate;
-    return rtutils_ns2time(sample_time * spec->nsamp);
+    err = snd_pcm_hw_params_get_period_time(hwparams, period, NULL);
+    if (err < 0) return err;
+
+    return 0;
 }
 
 const struct timespec * samp_get_period (const samp_t *samp)
@@ -87,55 +88,49 @@ snd_pcm_t * samp_get_pcm (const samp_t *samp)
     return samp->pcm;
 }
 
-int samp_init (samp_t *s, const samp_info_t *spec, samp_policy_t accept)
+unsigned samp_get_rate (const samp_t *samp)
 {
-    unsigned rate;
+    return samp->rate;
+}
+
+samp_t * samp_new (const char *device, unsigned rate,
+                   uint8_t channels, int *err)
+{
+    samp_t *s;
     snd_pcm_uframes_t nframes;
+    unsigned period;
+    snd_pcm_t *pcm;
+    int e;
     
-    memset((void *)s, 0, sizeof(samp_t));
-    s->period = build_period(spec);
+    assert(channels == 1 || channels == 2);
 
-    if ((s->err = snd_pcm_open(&s->pcm, spec->device,
-                               SND_PCM_STREAM_CAPTURE,
-                               SND_PCM_NONBLOCK) != 0)) {
-        s->status |= SAMP_ERR_LIBRARY;
-        return -1;
+    if ((e = snd_pcm_open(&pcm, device, SND_PCM_STREAM_CAPTURE,
+                          SND_PCM_NONBLOCK) != 0)) {
+        *err = e;
+        return NULL;
     }
-    if ((s->err = init_soundcard(s->pcm, spec, &rate, &nframes)) != 0) {
-        s->status |= SAMP_ERR_LIBRARY;
-        return -1;
+
+    if ((e = init_soundcard(pcm, &rate, channels, &nframes,
+                            &period)) != 0) {
+        *err = e;
+        return NULL;
     }
-    if ((rate != spec->rate) && (accept & SAMP_ACCEPT_RATE) == 0) {
-        s->status |= SAMP_ERR_RATE;
-        return -1;
-    }
+
+    s = (samp_t *) calloc(1, sizeof(samp_t));
+    assert(s);
+
+    s->pcm = pcm;
     s->nframes = nframes;
+    s->period = rtutils_ns2time(1000 * period);
+    s->rate = rate;
 
-    return 0;
-}
-
-samp_err_t samp_interr (samp_t *s)
-{
-    uint8_t status = s->status;
-    s->status &= ~SAMP_ERR_ALL;
-    return status & SAMP_ERR_ALL;
-}
-
-const char * samp_strerr (samp_t *s, samp_err_t err)
-{
-    switch (err) {
-        case SAMP_ERR_LIBRARY:
-            return strerror(s->err);
-        case SAMP_ERR_RATE:
-            return "Rate has been modified";
-        case SAMP_ERR_PERIOD:
-            return "Period has been modified";
-    }
-    return "Unknown";
+    return s;
 }
 
 void samp_destroy (samp_t *s)
 {
-    snd_pcm_close(s->pcm);
+    if (s != NULL) {
+        snd_pcm_close(s->pcm);
+        free(s);
+    }
 }
-

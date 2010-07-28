@@ -109,13 +109,13 @@ typedef enum {
     THRD_ERR_EMPTY    = 1 << 3      /**< No thread subscribed */
 } thrd_err_t;
 
-/** Initialize the pool
+/** Initialize the pool.
  *
- * @param pool The pool to be initialized;
  * @param minprio A positive priority offset over
- *                sched_get_priority_min()
+ *                sched_get_priority_min().
+ * @return The newly allocated pool.
  */
-void thrd_init (thrd_pool_t *pool, unsigned minprio);
+thrd_pool_t * thrd_new (unsigned minprio);
 
 /** Destroy the pool
  *

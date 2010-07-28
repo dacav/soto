@@ -29,103 +29,30 @@
 
 #include <alsa/asoundlib.h>
 
-#include "headers/options.h"
 #include "headers/alsagw.h"
-#include "headers/thrd.h"
+#include "headers/logging.h"
 #include "headers/sampthread.h"
-#include "headers/rtutils.h"
-#include "headers/plotthread.h"
-#include "headers/dispatch.h"
-
-static
-void samp_info_by_opts (samp_info_t *info, opts_t *opts)
-{
-    info->device = opts->device;
-    info->rate = opts->rate;
-    info->nsamp = opts->nsamp;
-    info->channels = opts->mode == MONO ? 1 : 2;
-}
+#include "headers/thrd.h"
 
 int main (int argc, char **argv)
 {
-    opts_t opts;
+    samp_t *samp;
+    sampth_handler_t sampth;
+    thrd_pool_t *pool;
     int err;
-    samp_t sampler;
-    samp_info_t sampinfo;
-    thrd_pool_t pool;
-    thdqueue_t *queue;
-    sampth_handler_t h;
-    disp_t dispatcher;
 
-    /* Parsing options */
-    if (opts_parse(&opts, argc, argv)) {
-        exit(EXIT_FAILURE);
+    pool = thrd_new(0);
+    samp = samp_new("hw:0,0", 96000, 2, &err);
+    if (samp == NULL) {
+        LOG_FMT("SUP? %s\n", snd_strerror(err));
     }
 
-    /* Threadpool initialization */
-    thrd_init(&pool, opts.minprio);
+    sampth_subscribe(&sampth, pool, samp, 10);
+    thrd_start(pool);
 
-    /* Build sampling information by reading options */
-    samp_info_by_opts(&sampinfo, &opts);
+    sleep(10);
 
-    /* Init sampling system */
-    if (samp_init(&sampler, &sampinfo, opts.policy)) {
-        samp_err_t err = samp_interr(&sampler);
-
-        ERR_FMT("Sampler init: %s", samp_strerr(&sampler, err));
-        exit(EXIT_FAILURE);
-    }
-
-    /* Build communication queue */
-    queue = thdqueue_new();
-
-    /* Subscribe sampling thread, it will be enabled later. */
-    if (sampth_subscribe(&h, &pool, &sampler, queue)) {
-        thrd_err_t err = thrd_interr(&pool);
-
-        ERR_FMT("Pool init: %s", thrd_strerr(&pool, err));
-        exit(EXIT_FAILURE);
-    }
-
-    /* Init the sampling dispatching system */
-    disp_init(&dispatcher, queue, (disp_dup_t)sampth_frameset_dup);
-
-    /* Subscribe the average + plot system, how many times as required by
-     * the user. */
-    while (opts.nplot --) {
-        if ((err = plotth_subscribe(&pool, disp_new_hook(&dispatcher),
-                                    &sampinfo)) != 0) {
-            thrd_err_t err = thrd_interr(&pool); 
-    
-            ERR_FMT("Adding second reader: %s", thrd_strerr(&pool, err));
-            exit(EXIT_FAILURE);
-        }
-    }
-
-    /* This is not elegant, but I have to deliver */
-    LOG_MSG("This program will start in two seconds and terminate after "
-            "1 minute");
-    sleep(2);
-
-    /* Starting the pool */
-    if (thrd_start(&pool)) {
-        thrd_err_t err = thrd_interr(&pool);
-
-        ERR_FMT("Starting init: %s", thrd_strerr(&pool, err));
-        exit(EXIT_FAILURE);
-    }
-
-    sleep(60);
-    LOG_MSG("Sending termination signal.");
-    if (sampth_sendkill(h)) {
-        LOG_MSG("...but I failed miserably");
-    } else {
-        LOG_MSG("...And I succeded in it");
-    }
-
-    thrd_destroy(&pool);
-    samp_destroy(&sampler);
-    disp_destroy(&dispatcher);
-
-    exit(EXIT_SUCCESS);
+    sampth_sendkill(sampth);
+    samp_destroy(samp);
+    thrd_destroy(pool);
 }

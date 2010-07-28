@@ -139,7 +139,6 @@ void set_defaults (opts_t *so)
     so->mode = STEREO;
     so->rate = DEFAULT_RATE;
     so->minprio = DEFAULT_MINPRIO;
-    so->nsamp = DEFAULT_PERIOD_SLOTS;
     so->nplot = DEFAULT_PLOTS_NUMBER;
     so->policy = SAMP_ACCEPT_RATE;
 }
@@ -186,12 +185,14 @@ int opts_parse (opts_t *so, int argc, char * const argv[])
                 }
                 break;
             case 'B':
+                /*
                 if (to_unsigned(optarg,(unsigned *)&so->nsamp) == -1) {
                     notify_error(argv[0],
                                  "invalid buffered samples count: '%s'",
                                  optarg);
                     return -1;
                 }
+                */
                 break;
             case 'p':
                 switch (to_priority(optarg, &so->minprio)) {

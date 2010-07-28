@@ -273,10 +273,14 @@ thrd_err_t thrd_interr (thrd_pool_t *pool)
     return status & THRD_ERR_ALL;
 }
 
-void thrd_init (thrd_pool_t *pool, unsigned minprio)
+thrd_pool_t * thrd_new (unsigned minprio)
 {
-    memset((void *) pool, 0, sizeof(thrd_pool_t));
+    thrd_pool_t *pool;
+
+    pool = (thrd_pool_t *) calloc(1, sizeof(thrd_pool_t));
     pool->minprio = minprio + sched_get_priority_min(SCHED_FIFO);
+
+    return pool;
 }
 
 static

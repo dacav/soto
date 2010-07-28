@@ -87,9 +87,6 @@ extern "C" {
 /** Default number of plotting windows. */
 #define DEFAULT_PLOTS_NUMBER     1
 
-/** Proportion between sampling and plotting periods. */
-#define DEFAULT_PERIOD_SLOTS    30
-
 #ifdef __cplusplus
 }
 #endif

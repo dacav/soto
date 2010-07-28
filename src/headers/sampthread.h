@@ -18,11 +18,11 @@
  *
  */
 
-/*
-
-   This module provieds a clean interface to pool (headers/thrd.h)
-   subscription of the thread in charge of doing the sampling phase.
-
+/** @file sampthread.h
+ *
+ * This module provieds a clean interface to pool (headers/thrd.h)
+ * subscription of the thread in charge of doing the sampling phase.
+ *
  */
 
 #ifndef __defined_headers_sampth_h
@@ -36,19 +36,8 @@ extern "C" {
 
 #include <thdacav/thdacav.h>
 
+/** Opaque data type for sampling thread handler */
 typedef struct sampth_data * sampth_handler_t;
-
-/** Data type for sampling set.
- *
- * This is the data produced by the thread and pushed to the output queue.
- *
- * @see sampth_subscribe().
- */
-typedef struct {
-    snd_pcm_uframes_t nframes;  /**< Number of stored frames_t objects */
-    samp_frame_t *frames;       /**< Sequentially read objects */
-
-} sampth_frameset_t;
 
 /** Subscribe a sampling thread to a thread pool.
  *
@@ -56,7 +45,6 @@ typedef struct {
  *                be stored;
  * @param pool The pool used for subscribing;
  * @param samp The sampler;
- * @param output The output queue in which data will be pushed.
  *
  * @see headers/alsagw.h.
  * @see headers/thrd.h.
@@ -65,7 +53,7 @@ typedef struct {
  *         interpret its return value as if it were thrd_add().
  */
 int sampth_subscribe (sampth_handler_t *handler, thrd_pool_t *pool,
-                      const samp_t *samp, thdqueue_t *output);
+                      const samp_t *samp, size_t scaling_factor);
 
 /** Request sampling termination.
  *
@@ -73,22 +61,11 @@ int sampth_subscribe (sampth_handler_t *handler, thrd_pool_t *pool,
  * termination on the output queue.
  *
  * @param handler The handler of the sampling thread.
+ *
+ * @retval 0 on success;
+ * @retval -1 on failure.
  */
 int sampth_sendkill (sampth_handler_t handler);
-
-/** Destructor for data set.
- *
- * @param set The data set to be freed.
- */
-void sampth_frameset_destroy (sampth_frameset_t *set);
-
-/** Copy constructor for data set.
- *
- * @param set The data set to be copied.
- *
- * @return The newly allocated data set
- */
-sampth_frameset_t * sampth_frameset_dup (const sampth_frameset_t *set);
 
 #ifdef __cplusplus
 }

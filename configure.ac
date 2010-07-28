@@ -1,5 +1,5 @@
 AC_PREREQ([2.64])
-AC_INIT([soto], [0.0.1], [simgidacav@gmail.com])
+AC_INIT([soto], [0.0.2], [simgidacav@gmail.com])
 
 AM_INIT_AUTOMAKE([-Wall])
 AC_CONFIG_SRCDIR([src/main.c])

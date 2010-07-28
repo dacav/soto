@@ -35,6 +35,7 @@ extern "C" {
 #include <assert.h>
 #include <stdint.h>
 #include <signal.h>
+#include <string.h>
 
 #include "headers/constants.h"
 
@@ -114,6 +115,17 @@ static inline
 int rtutils_time_iszero (const struct timespec *s)
 {
     return s->tv_sec == 0 && s->tv_nsec == 0;
+}
+
+/** Copy a struct timespec.
+ *
+ * @param dst The 'struct timespec' to be copied on.
+ * @param src The 'struct timespec' to copy;
+ */
+static inline
+void rtutils_time_copy (struct timespec *dst, const struct timespec *src)
+{
+    memcpy((void *)dst, (const void *)src, sizeof(struct timespec));
 }
 
 #ifdef __cplusplus
