@@ -219,3 +219,26 @@ int sampth_sendkill (sampth_handler_t handler)
     }
 }
 
+snd_pcm_uframes_t sampth_get_size (sampth_handler_t handler)
+{
+    return handler->slot_size * handler->nslots;
+}
+
+void sampth_get_samples (sampth_handler_t handler, samp_frame_t buffer[])
+{
+    const size_t sls = handler->slot_size;
+    unsigned slot;
+    snd_pcm_uframes_t nframes;
+
+    pthread_mutex_lock(&handler->mux);
+    slot = handler->slot;
+    nframes = sls * (handler->nslots - slot);
+    memcpy((void *)buffer,
+           (const void *)&handler->buffer[sls * slot],
+           sizeof(samp_frame_t) * nframes);
+    memcpy((void *)(buffer + nframes),
+           (const void *)handler->buffer,
+           sizeof(samp_frame_t) * sls * slot);
+    pthread_mutex_unlock(&handler->mux);
+}
+

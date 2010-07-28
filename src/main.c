@@ -37,33 +37,6 @@
 
 int main (int argc, char **argv)
 {
-    plot_t *p;
-
-    plotgr_t *g0, *g1, *g2, *g3;
-
-    p = plot_new(4, 10);
-
-    g0 = plot_new_graphic(p);
-    g1 = plot_new_graphic(p);
-    g2 = plot_new_graphic(p);
-    g3 = plot_new_graphic(p);
-
-    for (;;) {
-    	int i;
-
-    	for (i = 0; i < 10; i ++) {
-    		plot_graphic_set(g0, i, (1<<10) * rand());
-    		plot_graphic_set(g1, i, (1<<9) * rand());
-    		plot_graphic_set(g2, i, (1<<8) * rand());
-    		plot_graphic_set(g3, i, (1<<8) * rand());
-    	}
-    	plot_redraw(p);
-    }
-
-    plot_destroy(p);
-}
-
-#if 0
     samp_t *samp;
     sampth_handler_t sampth;
     thrd_pool_t *pool;
@@ -84,4 +57,3 @@ int main (int argc, char **argv)
     samp_destroy(samp);
     thrd_destroy(pool);
 }
-#endif

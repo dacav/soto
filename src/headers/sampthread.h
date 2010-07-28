@@ -25,6 +25,8 @@
  *
  */
 
+/** @file sampthread.h */
+
 #ifndef __defined_headers_sampth_h
 #define __defined_headers_sampth_h
 #ifdef __cplusplus
@@ -66,6 +68,21 @@ int sampth_subscribe (sampth_handler_t *handler, thrd_pool_t *pool,
  * @retval -1 on failure.
  */
 int sampth_sendkill (sampth_handler_t handler);
+
+/** Getter for the size of the reading buffer.
+ *
+ * @param handler The handler of the sampling thread.
+ *
+ * @return The size of the buffer in frames.
+ */
+snd_pcm_uframes_t sampth_get_size (sampth_handler_t handler);
+
+/** Thread-safe getter for the content of the reading buffer.
+ *
+ * The function assumes the buffer to be at least N frames long, where N
+ * is the value returned by the sampth_get_size() function.
+ */
+void sampth_get_samples (sampth_handler_t handler, samp_frame_t buffer[]);
 
 #ifdef __cplusplus
 }
