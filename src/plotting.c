@@ -26,11 +26,26 @@
 #include "headers/constants.h"
 #include "headers/logging.h"
 
+struct plot {
+    size_t ngraphics;   /* Number of graphics in the window; */
+    plotgr_t *graphics; /* Array of graphics; */
+    size_t used;        /* Number of graphics in use; */
+    unsigned max_x;     /* Maximum value for the x axis; */
+
+    plPlotter *handle;  /* libplot handle. */
+};
+
+struct graphic {
+    plot_t *main_plot;
+    int y_offset;
+    int16_t *values;
+};
+
 /* Reentrant initialization for libplot. Thanks to the guy who fixed the
  * libplot.
  */
 static
-plPlotter * init_libplot (size_t bufsize)
+plPlotter * init_libplot (size_t nplots, int max_x)
 {
     plPlotter *plot;
     plPlotterParams *params;
@@ -53,7 +68,8 @@ plPlotter * init_libplot (size_t bufsize)
 
     err = pl_openpl_r(plot);
     assert(err >= 0);
-    err = pl_space_r(plot, 0, PLOT_MIN_Y, bufsize, PLOT_MAX_Y);
+    err = pl_space_r(plot, 0, PLOT_MIN_Y * nplots, max_x,
+                     PLOT_MAX_Y * nplots);
     assert(err >= 0);
 	err = pl_linewidth_r(plot, 1);
     assert(err >= 0);
@@ -63,78 +79,88 @@ plPlotter * init_libplot (size_t bufsize)
     return plot;
 }
 
-void plot_init (plot_t *p, size_t bufsize)
+plot_t * plot_new (size_t n, unsigned max_x)
 {
-    p->plot = init_libplot(bufsize);
+    plot_t *p;
 
-    p->circular = malloc(bufsize * sizeof(samp_frame_t));
-    assert(p->circular);
-    p->bufsize = bufsize;
-    p->stored = p->cursor = 0;
+    assert(max_x > 1);
+    p = malloc(sizeof(plot_t));
+    assert(p);
+    p->graphics = calloc(n, sizeof(plotgr_t));
+    assert(p->graphics);
+    p->ngraphics = n;
+    p->used = 0;
+    p->handle = init_libplot(n, max_x);
+    p->max_x = max_x;
+    return p;
+}
+
+plotgr_t * plot_new_graphic (plot_t *p)
+{
+    plotgr_t *g;
+    int used;
+
+    if (p->used >= p->ngraphics) {
+        return NULL;
+    }
+    used = p->used;
+    g = p->graphics + used; 
+    p->used ++;
+
+    g->main_plot = p;
+    g->y_offset = used * (PLOT_MAX_Y - PLOT_MIN_Y)
+                  + (p->ngraphics - 1) * PLOT_MIN_Y;
+    g->values = calloc(p->max_x, sizeof(int16_t));
+
+    return g;
 }
 
 static
-void draw_lines (plPlotter *plot, unsigned count, samp_frame_t *from,
-                 samp_frame_t *to)
+void draw_lines (plPlotter *plot, int16_t vals[], size_t nvals,
+                 int offset)
 {
-    pl_move_r(plot, count - 1, from->ch0 + PLOT_OFFSET_UP);
-    pl_cont_r(plot, count, to->ch0 + PLOT_OFFSET_UP);
+    int i;
+
+    pl_move_r(plot, 0, vals[0] + offset);
+    for (i = 1; i < nvals; i ++) {
+        pl_cont_r(plot, i, vals[i] + offset);
+    }
     pl_endpath_r(plot);
-
-    pl_move_r(plot, count - 1, from->ch1 + PLOT_OFFSET_DOWN);
-    pl_cont_r(plot, count, to->ch1 + PLOT_OFFSET_DOWN);
-    pl_endpath_r(plot);
 }
 
-static
-void scan (plot_t *p)
+void plot_redraw(plot_t *p)
 {
-    unsigned i, n, count;
-    samp_frame_t *circ;
+    int i;
+    plotgr_t *graphics;
 
-    circ = p->circular;
-    n = p->stored;
-    count = 1;
-
-    i = p->cursor + 1;
-    while (count < n && i < p->bufsize) {
-        draw_lines(p->plot, count ++, &circ[i - 1], &circ[i]);
-        i ++;
+    graphics = p->graphics;
+    for (i = 0; i < p->used; i ++) {
+        draw_lines(p->handle, graphics[i].values, p->max_x,
+                   graphics[i].y_offset);
     }
-    if (count < n) {
-        draw_lines(p->plot, count ++, &circ[p->bufsize - 1], &circ[0]);
-    }
-    i = 1;
-    while (count < n && i < p->cursor) {
-        draw_lines(p->plot, count ++, &circ[i - 1], &circ[i]);
-        i ++;
-    }
+    pl_erase_r(p->handle);
 }
 
-static
-void insert (plot_t *plot, samp_frame_t *pair)
+void plot_graphic_set (plotgr_t *g, unsigned pos, int16_t val)
 {
-    unsigned cur;
+    plot_t *p = g->main_plot;
 
-    cur = plot->cursor;
-    plot->circular[cur ++] = *pair;
-    plot->cursor = cur >= plot->bufsize ? 0 : cur;
-    if (plot->stored ++ > plot->bufsize) {
-        plot->stored = plot->bufsize;
-    }
-}
-
-void plot_add_frame (plot_t *p, samp_frame_t *frame)
-{
-    insert(p, frame);
-    scan(p);
-    pl_erase_r(p->plot);
+    assert(p->max_x > pos);
+    g->values[pos] = val;
 }
 
 void plot_destroy (plot_t *p)
 {
-    pl_closepl_r(p->plot);
-    pl_deletepl_r(p->plot);
-    free(p->circular);
+    int i;
+    plotgr_t *graphics;
+
+    pl_closepl_r(p->handle);
+    pl_deletepl_r(p->handle);
+    graphics = p->graphics;
+    for (i = 0; i < p->used; i ++) {
+        free(graphics[i].values);
+    }
+    free(p->graphics);
+    free(p);
 }
 

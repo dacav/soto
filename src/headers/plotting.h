@@ -36,39 +36,50 @@ extern "C" {
 #include <plot.h>
 #include <stdint.h>
 
-#include "headers/alsagw.h"
+/** Plotter opaque type. */
+typedef struct plot plot_t;
 
-/** Plotting system.
- *
- * The plotter shows two graphics, one for each of the two channels.
- */
-typedef struct {
-    plPlotter * plot;           /**< Libplot handler; */
-    samp_frame_t * circular;    /**< Circular buffer for plotting; */
-    size_t bufsize;             /**< Size of the circular buffer; */
-    size_t stored;              /**< Number of element stored in the
-                                 *   buffer */
-    unsigned cursor;            /**< Current position into the buffer. */
-} plot_t;
+/** Plotter graphic opaque type */
+typedef struct graphic plotgr_t;
 
 /** Plotter constructor.
  *
- * This function spawns a X11 window on which the plot will be displayed.
+ * @note This function spawns a X11 window on which the plot will be displayed.
  *
- * @param p The plotter to be initialized;
- * @param bufsize The number of backward values showed during plotting.
+ * @param n The number of graphics that shall be drawn on the canvas;
+ * @param max_x The maximum accepted value for the x axis.
+ *
+ * @return The newly allocated plot instance.
  */
-void plot_init (plot_t *p, size_t bufsize);
+plot_t * plot_new (size_t n, unsigned max_x);
 
-/** Add a new frame to plotting.
+/** Add a new graphic.
  *
- * This function directly updates the X11 window with the two new values
- * contained into the second parameter.
+ * @param p The plotter.
  *
- * @param p The plotter;
- * @param frame The new frame to be buffered.
+ * @return The new graphic or NULL if the maximum number of plots has been
+ *         reached.
  */
-void plot_add_frame (plot_t *p, samp_frame_t *frame);
+plotgr_t * plot_new_graphic (plot_t *p);
+
+/** Write a value on a graphic.
+ *
+ * In order to visualize modification plot_redraw() must be called.
+ *
+ * @param g The graphic to write on;
+ * @param pos The position to modify;
+ * @param val The new value to write.
+ *
+ * @note The array position goes from 0 to the value provided as max_t
+ *       parameter for plot_new().
+ */
+void plot_graphic_set (plotgr_t *g, unsigned pos, int16_t val);
+
+/** Update the window by redrawing.
+ *
+ * @param p The plot to be redrawn.
+ */
+void plot_redraw(plot_t *p);
 
 /** Plotter Destructor
  *

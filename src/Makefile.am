@@ -4,6 +4,7 @@ bin_PROGRAMS = soto
 soto_SOURCES = alsagw.c headers/alsagw.h \
                rtutils.c headers/rtutils.h \
                thrd.c headers/thrd.h \
+               plotting.c headers/plotting.h \
                sampthread.c headers/sampthread.h \
                headers/logging.h \
                headers/constants.h \

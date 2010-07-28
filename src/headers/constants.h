@@ -48,19 +48,13 @@ extern "C" {
 #define ALSA_WAIT_PROPORTION    2
 
 /** Size of the graphical window used for plotting. */
-#define PLOT_BITMAPSIZE         "500x300"
+#define PLOT_BITMAPSIZE         "800x500"
 
 /** Minimum plotable value. */
-#define PLOT_MIN_Y              (2 * INT16_MAX)
+#define PLOT_MIN_Y              INT16_MAX
 
 /** Maximum plotable value. */
-#define PLOT_MAX_Y              (2 * INT16_MIN)
-
-/** Offset from canvas center of first plot. */ 
-#define PLOT_OFFSET_UP          INT16_MAX
-
-/** Offset from canvas center of second plot. */ 
-#define PLOT_OFFSET_DOWN        INT16_MIN
+#define PLOT_MAX_Y              INT16_MIN
 
 /** Multiplication factor (plotthread.c).
  *

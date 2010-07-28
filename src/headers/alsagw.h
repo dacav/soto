@@ -43,8 +43,11 @@ extern "C" {
  */
 typedef struct samp samp_t;
 
-/** Sample type is just a signed 16 bit value */
-typedef int16_t samp_frame_t;
+/** Sample type: just a pair of int16 */
+typedef struct {
+    int16_t ch0;
+    int16_t ch1;
+} samp_frame_t;
 
 /** Constructor for the sampler.
  *
