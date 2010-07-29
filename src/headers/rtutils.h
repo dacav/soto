@@ -92,6 +92,13 @@ void rtutils_wait (const struct timespec *delay)
 void rtutils_time_increment (struct timespec *target,
                              const struct timespec *val);
 
+/** Multiply a time specification for some scalar.
+ *
+ * @param target The time to multiply;
+ * @param factor The factor to be time will be multiplied.
+ */
+void rtutils_time_multiply (struct timespec *target, int factor);
+
 /** Comparsion between 'struct timespec'.
  *
  * Allows to determine which period is greater (strcmp-like return

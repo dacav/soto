@@ -38,12 +38,12 @@
 int main (int argc, char **argv)
 {
     samp_t *samp;
-    sampth_handler_t sampth;
+    sampth_t *sampth;
     thrd_pool_t *pool;
     int err;
 
     pool = thrd_new(0);
-    samp = samp_new("hw:0,0", 96000, 2, &err);
+    samp = samp_new("hw:0,0", 44100, 2, &err);
     if (samp == NULL) {
         LOG_FMT("SUP? %s\n", snd_strerror(err));
     }

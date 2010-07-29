@@ -48,6 +48,10 @@ struct sampth_data {
      * this is not documented anywere, LOL). In this case we wait up to
      * this value before giving up. */
     uint64_t alsa_wait_max;
+
+    /* Total period required to fill in the whole buffer, namely the
+     * execution period multiplied by the number of slots */
+    struct timespec read_period;
 };
 
 /* This callback is pushed into the thread cleanup system. Acts like a
@@ -152,7 +156,7 @@ int thread_cb (void *arg)
     return 0;
 }
 
-int sampth_subscribe (sampth_handler_t *handler, thrd_pool_t *pool,
+int sampth_subscribe (sampth_t **handler, thrd_pool_t *pool,
                       const samp_t *samp, size_t scaling_factor)
 {
     thrd_info_t thi;
@@ -180,13 +184,19 @@ int sampth_subscribe (sampth_handler_t *handler, thrd_pool_t *pool,
     ctx->slot = 0;
     pthread_mutex_init(&ctx->mux, NULL);
 
-    thi.delay.tv_sec = STARTUP_DELAY_SEC;
-    thi.delay.tv_nsec = STARTUP_DELAY_nSEC;
+    thi.delay.tv_sec = SAMP_STARTUP_DELAY_SEC;
+    thi.delay.tv_nsec = SAMP_STARTUP_DELAY_nSEC;
 
     /* Period management. */
     period = samp_get_period(samp);
+    rtutils_time_copy(&ctx->read_period, period);
+    rtutils_time_multiply(&ctx->read_period, scaling_factor);
+
+    /* How much should I be locked waiting for a not-available data? */
     ctx->alsa_wait_max = rtutils_time2ns(period) / ALSA_WAIT_PROPORTION;
-    rtutils_time_copy(&thi.period, period);     /* Period request to the thread pool */
+
+    /* Period request for the thread pool */
+    rtutils_time_copy(&thi.period, period);
 
     if ((err = thrd_add(pool, &thi)) != 0) {
         free(ctx->buffer);
@@ -198,7 +208,7 @@ int sampth_subscribe (sampth_handler_t *handler, thrd_pool_t *pool,
     return err;
 }
 
-int sampth_sendkill (sampth_handler_t handler)
+int sampth_sendkill (sampth_t *handler)
 {
     if (handler == NULL) {
         return -1;
@@ -219,12 +229,12 @@ int sampth_sendkill (sampth_handler_t handler)
     }
 }
 
-snd_pcm_uframes_t sampth_get_size (sampth_handler_t handler)
+snd_pcm_uframes_t sampth_get_size (const sampth_t *handler)
 {
     return handler->slot_size * handler->nslots;
 }
 
-void sampth_get_samples (sampth_handler_t handler, samp_frame_t buffer[])
+void sampth_get_samples (sampth_t *handler, samp_frame_t buffer[])
 {
     const size_t sls = handler->slot_size;
     unsigned slot;
@@ -240,5 +250,10 @@ void sampth_get_samples (sampth_handler_t handler, samp_frame_t buffer[])
            (const void *)handler->buffer,
            sizeof(samp_frame_t) * sls * slot);
     pthread_mutex_unlock(&handler->mux);
+}
+
+const struct timespec * sampth_get_period (const sampth_t *handler)
+{
+    return &handler->read_period;
 }
 

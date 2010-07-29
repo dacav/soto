@@ -34,13 +34,23 @@ extern "C" {
 #include <stdint.h>
 
 /** Number of seconds per nanoseconds. */
-#define SECOND_NS 1000000000UL
+#define SECOND_NS               1000000000UL
 
-/** Startup delay for all threads, seconds. */
-#define STARTUP_DELAY_SEC       0
+/** Startup delay for sampling thread, seconds. */
+#define SAMP_STARTUP_DELAY_SEC  0
 
-/** Startup delay for all threads, nanoseconds. */
-#define STARTUP_DELAY_nSEC      500000
+/** Startup delay for sampling thread, nanoseconds. */
+#define SAMP_STARTUP_DELAY_nSEC 500000
+
+/** Period for direct plotting thread, seconds. */
+#define PLOT_PERIOD_SEC        0
+
+/** Period for direct plotting thread, nanoseconds.
+ *
+ * This value corresponds to 1.0 sec / 28, namely a suitable frequency for
+ * the human eye to notice the plot updating.
+ */
+#define PLOT_PERIOD_nSEC        35714286     
 
 /** Proportion divisor between sampling thread period and sampling wait in
  * case of failure. This will be multiplied by period in sampthread.c.

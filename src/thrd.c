@@ -71,6 +71,7 @@ void * thread_routine (void * arg)
      * thread stack. The external callback system gives the abstraction. */
     thrd_t *thrd = (thrd_t *)arg;
     struct timespec next_act;
+    struct timespec finish_time;
     void *context;
 
     context = thrd->info.context;
@@ -104,6 +105,11 @@ void * thread_routine (void * arg)
             }
             pthread_exit(NULL);
         }
+        rtutils_get_now(&finish_time);
+        if (rtutils_time_cmp(&next_act, &finish_time) > 0) {
+            LOG_MSG("Deadline miss");
+        }
+
         rtutils_wait(&next_act);
     }
 

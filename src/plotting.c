@@ -22,6 +22,8 @@
 #include <assert.h>
 #include <stdlib.h>
 
+#include <pthread.h>
+
 #include "headers/plotting.h"
 #include "headers/constants.h"
 #include "headers/logging.h"
@@ -36,9 +38,13 @@ struct plot {
 };
 
 struct graphic {
-    plot_t *main_plot;
-    int y_offset;
-    int16_t *values;
+    plot_t *main_plot;  /* Pointer to the main plot; */
+    int y_offset;       /* Vertical offset of this graphic; */
+    int16_t *values;    /* Stored values that gets modified; */
+
+    /* Two kind of threads may access this: the one which is updating the
+     * plot and the possibly multiple ones updating the data. */
+    pthread_mutex_t lock;
 };
 
 /* Reentrant initialization for libplot. Thanks to the guy who fixed the
@@ -111,6 +117,7 @@ plotgr_t * plot_new_graphic (plot_t *p)
     g->y_offset = used * (PLOT_MAX_Y - PLOT_MIN_Y)
                   + (p->ngraphics - 1) * PLOT_MIN_Y;
     g->values = calloc(p->max_x, sizeof(int16_t));
+    pthread_mutex_init(&g->lock, NULL);
 
     return g;
 }
@@ -131,12 +138,15 @@ void draw_lines (plPlotter *plot, int16_t vals[], size_t nvals,
 void plot_redraw(plot_t *p)
 {
     int i;
-    plotgr_t *graphics;
+    plotgr_t *g;
 
-    graphics = p->graphics;
+    g = p->graphics;
     for (i = 0; i < p->used; i ++) {
-        draw_lines(p->handle, graphics[i].values, p->max_x,
-                   graphics[i].y_offset);
+        pthread_mutex_lock(&g->lock);
+        draw_lines(p->handle, g->values, p->max_x,
+                   g->y_offset);
+        pthread_mutex_unlock(&g->lock);
+        g ++;
     }
     pl_erase_r(p->handle);
 }
@@ -146,7 +156,10 @@ void plot_graphic_set (plotgr_t *g, unsigned pos, int16_t val)
     plot_t *p = g->main_plot;
 
     assert(p->max_x > pos);
+
+    pthread_mutex_lock(&g->lock);
     g->values[pos] = val;
+    pthread_mutex_unlock(&g->lock);
 }
 
 void plot_destroy (plot_t *p)
@@ -158,6 +171,7 @@ void plot_destroy (plot_t *p)
     pl_deletepl_r(p->handle);
     graphics = p->graphics;
     for (i = 0; i < p->used; i ++) {
+        pthread_mutex_destroy(&graphics[i].lock);
         free(graphics[i].values);
     }
     free(p->graphics);

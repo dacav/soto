@@ -54,3 +54,11 @@ struct timespec rtutils_ns2time (uint64_t ns)
     return ret;
 }
 
+void rtutils_time_multiply (struct timespec *target, int factor)
+{
+    struct timespec product;
+    
+    product = rtutils_ns2time(rtutils_time2ns(target) * factor);
+    rtutils_time_copy(target, &product);
+}
+

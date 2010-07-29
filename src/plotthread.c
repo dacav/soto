@@ -29,150 +29,116 @@
 #include "headers/plotting.h"
 #include "headers/sampthread.h"
 
-static
-struct timespec build_period (const samp_info_t *spec)
-{
-    uint64_t sample_time = SECOND_NS / spec->rate;
-    return rtutils_ns2time(PLOT_PERIOD_TIMES * sample_time *
-                           spec->nsamp);
-}
-
 struct plotth_data {
-    thdqueue_t * input; /* Input queue */
-    plot_t plot;
-    unsigned rate;
+    samp_frame_t *buffer;
+    snd_pcm_uframes_t buflen;
+    sampth_t *sampth;
 
-    size_t nread;       /* What is left of the previous iteration */
-    int32_t accum_c0;   /* Accumulator for channel 0 */
-    int32_t accum_c1;   /* Accumulator for channel 1 */
+    struct {
+        int active;             /* 1 if the thread is running; */
+        pthread_t self;         /* Handler used for termination; */
+    } thread;
 };
 
 static
 int init_cb (void *arg)
 {
-    struct plotth_data *ctx = (struct plotth_data *) arg;
-    plot_init(&ctx->plot, ctx->rate / PLOT_AVERAGE_LEN);
+    struct plotth_data *ctx = (struct plotth_data *)arg;
 
+    pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
+
+    ctx->thread.active = 1;
+    ctx->thread.self = pthread_self();
     return 0;
 }
 
 static
-void update_plot (struct plotth_data *ctx, sampth_frameset_t *set)
+void destroy_cb (void *arg)
 {
-    size_t nframes;
-    int i, j = 0;
+    struct plotth_data *ctx = (struct plotth_data *)arg;
 
-    nframes = set->nframes;
-
-    /* The set might be more than PLOT_AVERAGE_LEN samples, so we may need
-     * to build more than one average. We take in account also samples
-     * left from previous averages. */
-    while (nframes + ctx->nread >= PLOT_AVERAGE_LEN) {
-        samp_frame_t frame;
-
-        /* Summing values for channel 0 and channel 1 until we reach the
-         * number of element in the average. */
-        for (i = ctx->nread; i < PLOT_AVERAGE_LEN; i ++) {
-            ctx->accum_c0 = set->frames[j].ch0;
-            ctx->accum_c1 = set->frames[j].ch1;
-            j ++;
-        }
-
-        /* Plotting the obtained result. */
-        frame.ch0 = ctx->accum_c0 / PLOT_AVERAGE_LEN;
-        frame.ch1 = ctx->accum_c1 / PLOT_AVERAGE_LEN;
-        plot_add_frame(&ctx->plot, &frame);
-
-        /* Preparing for next average. */
-        nframes -= PLOT_AVERAGE_LEN;
-        nframes += ctx->nread;
-        ctx->accum_c0 = ctx->accum_c1 = ctx->nread = 0;
-    }
-
-    /* Some data might be left, so they will be part of the next
-     * sampling */
-    for (i = 0; i < nframes; i ++) {
-        ctx->accum_c0 = set->frames[j].ch0;
-        ctx->accum_c1 = set->frames[j].ch1;
-        j ++;
-    }
-    ctx->nread = nframes;
+    free(ctx->buffer);
+    free(arg);
 }
 
 static
 int thread_cb (void *arg)
 {
-    struct plotth_data *ctx = (struct plotth_data *) arg;
-    sampth_frameset_t *set;
-    size_t nenqueued = PLOT_PERIOD_TIMES;
+    struct plotth_data *ctx = (struct plotth_data *)arg;
 
-    while (nenqueued --) {
-        switch (thdqueue_try_extract(ctx->input, (void **) &set)) {
-            case THDQUEUE_EMPTY:
-                /* Nothing left to plot */
-                return 0;
-            case THDQUEUE_ENDDATA:
-                /* Producer interrupted data stream */
-                return 1;
-            case THDQUEUE_SUCCESS:
-                /* Updating new set */
-                update_plot(ctx, set);
-                sampth_frameset_destroy(set);
-                break;
-            default:
-                DEBUG_MSG("Bug in libthdacav?");
-                abort();
-        }
-    }
+    sampth_get_samples(ctx->sampth, ctx->buffer);
+
+    /* Check cancellations. If it is the case the destroy_cb will manage
+     * memory deallocation. */
+    pthread_cleanup_push(destroy_cb, arg);
+    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+    pthread_testcancel();
+    pthread_cleanup_pop(0);
+    pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
 
     return 0;
 }
 
-static
-int destroy_cb (void *arg)
-{
-    struct plotth_data *ctx = (struct plotth_data *) arg;
-
-    plot_destroy(&ctx->plot);
-    free(arg);
-
-    return 0;
-}
-
-int plotth_subscribe (thrd_pool_t *pool, thdqueue_t *input,
-                      const samp_info_t *samp)
+int plotth_subscribe (plotth_t **handle, thrd_pool_t *pool,
+                      sampth_t *sampth)
 {
     thrd_info_t thi;
     struct plotth_data *ctx;
-    struct timespec period;
     int err;
 
     thi.init = init_cb;
     thi.callback = thread_cb;
-    thi.destroy = destroy_cb;
+    thi.destroy = NULL;
 
-    /* Note: the thread is in charge of freeing this before shutting
-     *       down, unless everything fails on thrd_add().
-     */
-    thi.context = malloc(sizeof(struct plotth_data));
-    assert(thi.context);
-    DEBUG_FMT("I subscribed %p as context data", (void *) thi.context);
-    ctx = (struct plotth_data *) thi.context;
-    ctx->input = input;
-    ctx->rate = samp->rate;
-    ctx->nread = 0;
+    ctx = calloc(1, sizeof(struct plotth_data));
+    assert(ctx);
+    thi.context = (void *) ctx;
 
-    thi.delay.tv_sec = STARTUP_DELAY_SEC;
-    thi.delay.tv_nsec = STARTUP_DELAY_nSEC;
+    /* Common startup delay. */
+    thi.delay.tv_sec = SAMP_STARTUP_DELAY_SEC;
+    thi.delay.tv_nsec = SAMP_STARTUP_DELAY_nSEC;
 
-    period = build_period(samp),
-    memcpy((void *) &thi.period, (const void *) &period,
-            sizeof(struct timespec));
+    /* The startup delay must be incremented in order to allow the
+     * sampling thread to fill at least one buffer. The same value is used
+     * to set the period. */
+    rtutils_time_increment(&thi.delay, sampth_get_period(sampth));
+    rtutils_time_copy(&thi.period, &thi.delay);
+
+    ctx->buflen = sampth_get_size(sampth);
+    ctx->buffer = calloc(ctx->buflen, sizeof(samp_frame_t));
+    assert(ctx->buffer);
+
+    ctx->thread.active = 0;
+    ctx->sampth = sampth;
 
     if ((err = thrd_add(pool, &thi)) != 0) {
+        free(ctx->buffer);
         free(ctx);
+        *handle = NULL;
+    } else {
+        *handle = ctx;
     }
     return err;
 }
 
+int plotth_sendkill (plotth_t *handle)
+{
+    if (handle == NULL) {
+        return -1;
+    }
+    if (handle->thread.active) {
+        int err;
+        
+        /* The cancellation will be checked explicitly in thread_cb().
+         * Also note that the thread pool (see headers/thrd.h) is in
+         * charge of joining the thread.
+         */
+        err = pthread_cancel(handle->thread.self);
+
+        assert(!err);
+        return 0;
+    } else {
+        return -1;
+    }
+}
 

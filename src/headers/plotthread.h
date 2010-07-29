@@ -35,7 +35,12 @@ extern "C" {
 #include <thdacav/thdacav.h>
 
 #include "headers/thrd.h"
+#include "headers/sampthread.h"
+#include "headers/plotting.h"
 #include "alsagw.h"
+
+/** Opaque type for plotting thread handle. */
+typedef struct plotth_data plotth_t;
 
 /** Subscribe a plotting thread to the given pool.
  *
@@ -44,14 +49,27 @@ extern "C" {
  * the same definition, since it will determine the period definition of
  * the realtime thread.
  *
+ * @param handle Thea address of a pointer where the plotting thread
+ *               handle address will be stored;
  * @param pool The pool to which the sampler will be subscribed;
- * @param input The queue feeding the plotter with sampth_frameset_t
- *              objects;
- * @param samp The specification used as parameter for samp_init().
+ * @param sampth The handle of the sampler thread.
  *
+ * @return This function just adds something to pool, therefore you may
+ *         interpret its return value as if it were thrd_add().
  */
-int plotth_subscribe (thrd_pool_t *pool, thdqueue_t *input,
-                      const samp_info_t *samp);
+int plotth_subscribe (plotth_t **handle, thrd_pool_t *pool,
+                      sampth_t *sampth);
+
+/** Request plotting termination.
+ *
+ * This call terminates the running plotter.
+ *
+ * @param handle The handle of the plotting thread.
+ *
+ * @retval 0 on success;
+ * @retval -1 on failure (thread not started).
+ */
+int plotth_sendkill (plotth_t *handle);
 
 #ifdef __cplusplus
 }
