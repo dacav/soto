@@ -64,7 +64,7 @@ int init_soundcard (snd_pcm_t *handle, unsigned *rate, uint8_t channels,
     err = snd_pcm_hw_params(handle, hwparams);
     if (err < 0) return err;
 
-    err = snd_pcm_hw_params_get_buffer_size_min(hwparams, nframes);
+    err = snd_pcm_hw_params_get_period_size_min(hwparams, nframes, NULL);
     if (err < 0) return err;
 
     err = snd_pcm_hw_params_get_period_time(hwparams, period, NULL);
