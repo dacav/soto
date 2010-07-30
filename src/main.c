@@ -34,25 +34,57 @@
 #include "headers/sampthread.h"
 #include "headers/thrd.h"
 #include "headers/plotting.h"
+#include "headers/plotthread.h"
+#include "headers/show.h"
 
 int main (int argc, char **argv)
 {
     samp_t *samp;
     sampth_t *sampth;
     thrd_pool_t *pool;
+    plot_t *plot;
+    plotth_t *plotth;
+    showth_t *showth;
     int err;
 
     pool = thrd_new(0);
     samp = samp_new("hw:0,0", 44100, 2, &err);
     if (samp == NULL) {
-        LOG_FMT("SUP? %s\n", snd_strerror(err));
+        LOG_FMT("Building samp: %s\n", snd_strerror(err));
     }
 
-    sampth_subscribe(&sampth, pool, samp, 10);
-    thrd_start(pool);
+    if (sampth_subscribe(&sampth, pool, samp, 10)) {
+        thrd_err_t err = thrd_interr(pool);
+        LOG_FMT("Unable to startup: %s", thrd_strerr(pool, err));
+        exit(EXIT_FAILURE);
+    }
 
-    sleep(10);
+    plot = plot_new(2, sampth_get_size(sampth));
+    if (plotth_subscribe(&plotth, pool, plot)) {
+        thrd_err_t err = thrd_interr(pool);
+        LOG_FMT("Unable to startup: %s", thrd_strerr(pool, err));
+        exit(EXIT_FAILURE);
+    }
 
+    if (showth_subscribe(&showth, pool, sampth,
+                         plot_new_graphic(plot),
+                         plot_new_graphic(plot))) {
+        thrd_err_t err = thrd_interr(pool);
+        LOG_FMT("Unable to startup: %s", thrd_strerr(pool, err));
+        exit(EXIT_FAILURE);
+    }
+
+    if (thrd_start(pool)) {
+        thrd_err_t err = thrd_interr(pool);
+        LOG_FMT("Unable to startup: %s", thrd_strerr(pool, err));
+        exit(EXIT_FAILURE);
+    }
+
+    sleep(1000);
+
+    showth_sendkill(showth);
+    plotth_sendkill(plotth);
+    plot_destroy(plot);
     sampth_sendkill(sampth);
     samp_destroy(samp);
     thrd_destroy(pool);

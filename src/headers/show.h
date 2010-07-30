@@ -18,7 +18,7 @@
  *
  */
 
-/** @file plotthread.h
+/** @file showthread.h
  *
  * This module provieds a clean interface to pool (headers/thrd.h)
  * subscription of the thread in charge of doing the data elaboration
@@ -26,8 +26,8 @@
  *
  */
 
-#ifndef __defined_headers_plotthread_h
-#define __defined_headers_plotthread_h
+#ifndef __defined_headers_showthread_h
+#define __defined_headers_showthread_h
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -40,20 +40,27 @@ extern "C" {
 #include "alsagw.h"
 
 /** Opaque type for plotting thread handle. */
-typedef struct plotth_data plotth_t;
+typedef struct showth_data showth_t;
 
-/** Subscribe a plotting thread to the given pool.
+/** Subscribe a direct thread to the given pool.
+ *
+ * The sampling object (samp_t) must not necessarly be already created
+ * when this function is called, however the samp parameter must contain
+ * the same definition, since it will determine the period definition of
+ * the realtime thread.
  *
  * @param handle Thea address of a pointer where the plotting thread
  *               handle address will be stored;
  * @param pool The pool to which the sampler will be subscribed;
- * @param plot The plotter instance.
+ * @param sampth The handle of the sampler thread;
+ * @param g0 The graphic where the channel 0 data will be shown;
+ * @param g1 The graphic where the channel 1 data will be shown.
  *
  * @return This function just adds something to pool, therefore you may
  *         interpret its return value as if it were thrd_add().
  */
-int plotth_subscribe (plotth_t **handle, thrd_pool_t *pool,
-                      plot_t *plot);
+int showth_subscribe (showth_t **handle, thrd_pool_t *pool,
+                      sampth_t *sampth, plotgr_t *g0, plotgr_t *g1);
 
 /** Request plotting termination.
  *
@@ -64,10 +71,10 @@ int plotth_subscribe (plotth_t **handle, thrd_pool_t *pool,
  * @retval 0 on success;
  * @retval -1 on failure (thread not started).
  */
-int plotth_sendkill (plotth_t *handle);
+int showth_sendkill (showth_t *handle);
 
 #ifdef __cplusplus
 }
 #endif
-#endif // __defined_headers_plotthread_h
+#endif // __defined_headers_showthread_h
 

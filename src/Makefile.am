@@ -6,10 +6,11 @@ soto_SOURCES = alsagw.c headers/alsagw.h \
                thrd.c headers/thrd.h \
                plotting.c headers/plotting.h \
 			   plotthread.c headers/plotthread.h \
+			   show.c headers/show.h \
                sampthread.c headers/sampthread.h \
                headers/logging.h \
                headers/constants.h \
                main.c
 
-soto_LDADD = -lasound -ldacav -lrt -lthdacav -lplot #-lefence
+soto_LDADD = -lasound -ldacav -lrt -lthdacav -lplot
 

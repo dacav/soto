@@ -50,6 +50,7 @@ extern "C" {
  * This value corresponds to 1.0 sec / 28, namely a suitable frequency for
  * the human eye to notice the plot updating.
  */
+//#define PLOT_PERIOD_nSEC        35714286     
 #define PLOT_PERIOD_nSEC        35714286     
 
 /** Proportion divisor between sampling thread period and sampling wait in
@@ -66,7 +67,7 @@ extern "C" {
 /** Maximum plotable value. */
 #define PLOT_MAX_Y              INT16_MIN
 
-/** Multiplication factor (plotthread.c).
+/** Multiplication factor (showread.c).
  *
  * The period of the plotter will be a multiple of the sampling period
  * w.r.t. this constant.
