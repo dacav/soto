@@ -16,3 +16,4 @@ src/*.o
 src/headers/config.*
 src/headers/stamp-h1
 src/soto
+doc/Doxyfile
