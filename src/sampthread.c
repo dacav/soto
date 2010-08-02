@@ -136,8 +136,8 @@ int thread_cb (void *arg)
 
     pthread_mutex_lock(&ctx->mux);
     slot = ctx->slot;
-    nread = alsa_read(ctx->pcm, ctx->buffer + slot, ctx->slot_size,
-                      ctx->alsa_wait_max);
+    nread = alsa_read(ctx->pcm, ctx->buffer + slot * ctx->slot_size,
+                      ctx->slot_size, ctx->alsa_wait_max);
     ctx->slot = (slot + 1) % ctx->nslots;
     pthread_mutex_unlock(&ctx->mux);
 
