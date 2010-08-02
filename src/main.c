@@ -43,7 +43,7 @@ int main (int argc, char **argv)
     genth_t *sampth;
     thrd_pool_t *pool;
     plot_t *plot;
-    plotth_t *plotth;
+    genth_t *plotth;
     showth_t *showth;
     int err;
 
@@ -80,10 +80,10 @@ int main (int argc, char **argv)
         exit(EXIT_FAILURE);
     }
 
-    sleep(1000);
+    sleep(10);
 
     showth_sendkill(showth);
-    plotth_sendkill(plotth);
+    genth_sendkill(plotth);
     plot_destroy(plot);
     genth_sendkill(sampth);
     samp_destroy(samp);

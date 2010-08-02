@@ -32,13 +32,10 @@
 extern "C" {
 #endif
 
-#include "headers/thrd.h"
+#include "headers/genthrd.h"
 #include "headers/sampthread.h"
 #include "headers/plotting.h"
 #include "alsagw.h"
-
-/** Opaque type for plotting thread handle. */
-typedef struct plotth_data plotth_t;
 
 /** Subscribe a plotting thread to the given pool.
  *
@@ -50,19 +47,8 @@ typedef struct plotth_data plotth_t;
  * @return This function just adds something to pool, therefore you may
  *         interpret its return value as if it were thrd_add().
  */
-int plotth_subscribe (plotth_t **handle, thrd_pool_t *pool,
+int plotth_subscribe (genth_t **handle, thrd_pool_t *pool,
                       plot_t *plot);
-
-/** Request plotting termination.
- *
- * This call terminates the running plotter.
- *
- * @param handle The handle of the plotting thread.
- *
- * @retval 0 on success;
- * @retval -1 on failure (thread not started).
- */
-int plotth_sendkill (plotth_t *handle);
 
 #ifdef __cplusplus
 }
