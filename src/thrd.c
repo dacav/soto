@@ -54,7 +54,7 @@ typedef struct {
     int priority;               /* Thread's priority */
     pthread_t handler;          /* Handler of the thread. */
     uint8_t status;             /* Status flags. */
-    const thrd_info_t info;     /* User defined thread info. Defined in
+    thrd_info_t info;           /* User defined thread info. Defined in
                                    headers/thrd.h */
 
     struct timespec start;      /* Pool start time, used for computing the
