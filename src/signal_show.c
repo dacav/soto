@@ -21,7 +21,7 @@
 #include <thdacav/thdacav.h>
 #include <stdint.h>
 
-#include "headers/show.h"
+#include "headers/signal_show.h"
 #include "headers/logging.h"
 #include "headers/alsagw.h"
 #include "headers/constants.h"
@@ -35,32 +35,17 @@ struct showth_data {
     genth_t *sampth;
 
     plotgr_t *g0, *g1;
-
-    struct {
-        int active;             /* 1 if the thread is running; */
-        pthread_t self;         /* Handler used for termination; */
-    } thread;
 };
 
 static
-int init_cb (void *arg)
-{
-    struct showth_data *ctx = (struct showth_data *)arg;
-
-    pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
-
-    ctx->thread.active = 1;
-    ctx->thread.self = pthread_self();
-    return 0;
-}
-
-static
-void destroy_cb (void *arg)
+int destroy_cb (void *arg)
 {
     struct showth_data *ctx = (struct showth_data *)arg;
 
     free(ctx->buffer);
     free(arg);
+
+    return 0;
 }
 
 static
@@ -77,29 +62,21 @@ int thread_cb (void *arg)
         plot_graphic_set(ctx->g1, i, buffer[i].ch1);
     }
 
-    /* Check cancellations. If it is the case the destroy_cb will manage
-     * memory deallocation. */
-    pthread_cleanup_push(destroy_cb, arg);
-    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-    pthread_testcancel();
-    pthread_cleanup_pop(0);
-    pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
-
     return 0;
 }
 
-int showth_subscribe (showth_t **handle, thrd_pool_t *pool,
+int showth_subscribe (genth_t **handle, thrd_pool_t *pool,
                       genth_t *sampth, plotgr_t *g0, plotgr_t *g1)
 {
-    thrd_info_t thi;
     struct showth_data *ctx;
+    thrd_info_t thi;
     int err;
 
-    thi.init = init_cb;
+    thi.init = NULL;
     thi.callback = thread_cb;
-    thi.destroy = NULL;
+    thi.destroy = destroy_cb;
 
-    ctx = calloc(1, sizeof(struct showth_data));
+    ctx = (struct showth_data *) calloc(1, sizeof(struct showth_data));
     assert(ctx);
     thi.context = (void *) ctx;
 
@@ -117,39 +94,14 @@ int showth_subscribe (showth_t **handle, thrd_pool_t *pool,
     ctx->buffer = calloc(ctx->buflen, sizeof(samp_frame_t));
     assert(ctx->buffer);
 
-    ctx->thread.active = 0;
-    ctx->sampth = sampth;
     ctx->g0 = g0;
     ctx->g1 = g1;
+    ctx->sampth = sampth;
 
-    if ((err = thrd_add(pool, &thi)) != 0) {
+    if ((err = genth_subscribe(handle, pool, &thi)) != 0) {
         free(ctx->buffer);
         free(ctx);
-        *handle = NULL;
-    } else {
-        *handle = ctx;
     }
     return err;
-}
-
-int showth_sendkill (showth_t *handle)
-{
-    if (handle == NULL) {
-        return -1;
-    }
-    if (handle->thread.active) {
-        int err;
-        
-        /* The cancellation will be checked explicitly in thread_cb().
-         * Also note that the thread pool (see headers/thrd.h) is in
-         * charge of joining the thread.
-         */
-        err = pthread_cancel(handle->thread.self);
-
-        assert(!err);
-        return 0;
-    } else {
-        return -1;
-    }
 }
 

@@ -39,9 +39,6 @@ extern "C" {
 #include "headers/plotting.h"
 #include "alsagw.h"
 
-/** Opaque type for plotting thread handle. */
-typedef struct showth_data showth_t;
-
 /** Subscribe a direct thread to the given pool.
  *
  * The sampling object (samp_t) must not necessarly be already created
@@ -59,19 +56,8 @@ typedef struct showth_data showth_t;
  * @return This function just adds something to pool, therefore you may
  *         interpret its return value as if it were thrd_add().
  */
-int showth_subscribe (showth_t **handle, thrd_pool_t *pool,
+int showth_subscribe (genth_t **handle, thrd_pool_t *pool,
                       genth_t *sampth, plotgr_t *g0, plotgr_t *g1);
-
-/** Request plotting termination.
- *
- * This call terminates the running plotter.
- *
- * @param handle The handle of the plotting thread.
- *
- * @retval 0 on success;
- * @retval -1 on failure (thread not started).
- */
-int showth_sendkill (showth_t *handle);
 
 #ifdef __cplusplus
 }

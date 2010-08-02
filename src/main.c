@@ -35,7 +35,7 @@
 #include "headers/thrd.h"
 #include "headers/plotting.h"
 #include "headers/plotthread.h"
-#include "headers/show.h"
+#include "headers/signal_show.h"
 
 int main (int argc, char **argv)
 {
@@ -44,7 +44,7 @@ int main (int argc, char **argv)
     thrd_pool_t *pool;
     plot_t *plot;
     genth_t *plotth;
-    showth_t *showth;
+    genth_t *showth;
     int err;
 
     pool = thrd_new(0);
@@ -82,7 +82,7 @@ int main (int argc, char **argv)
 
     sleep(10);
 
-    showth_sendkill(showth);
+    genth_sendkill(showth);
     genth_sendkill(plotth);
     plot_destroy(plot);
     genth_sendkill(sampth);

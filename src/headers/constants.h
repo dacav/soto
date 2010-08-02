@@ -67,7 +67,7 @@ extern "C" {
 /** Maximum plotable value. */
 #define PLOT_MAX_Y              INT16_MIN
 
-/** Multiplication factor (showread.c).
+/** Multiplication factor (signal_show.c).
  *
  * The period of the plotter will be a multiple of the sampling period
  * w.r.t. this constant.

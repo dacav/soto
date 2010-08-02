@@ -6,8 +6,8 @@ soto_SOURCES = alsagw.c headers/alsagw.h \
                thrd.c headers/thrd.h \
                plotting.c headers/plotting.h \
                genthrd.c headers/genthrd.h \
-			   plotthread.c headers/plotthread.h \
-			   show.c headers/show.h \
+               plotthread.c headers/plotthread.h \
+               signal_show.c headers/signal_show.h \
                sampthread.c headers/sampthread.h \
                headers/logging.h \
                headers/constants.h \
