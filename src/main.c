@@ -40,7 +40,7 @@
 int main (int argc, char **argv)
 {
     samp_t *samp;
-    sampth_t *sampth;
+    genth_t *sampth;
     thrd_pool_t *pool;
     plot_t *plot;
     plotth_t *plotth;
@@ -85,7 +85,7 @@ int main (int argc, char **argv)
     showth_sendkill(showth);
     plotth_sendkill(plotth);
     plot_destroy(plot);
-    sampth_sendkill(sampth);
+    genth_sendkill(sampth);
     samp_destroy(samp);
     thrd_destroy(pool);
 }

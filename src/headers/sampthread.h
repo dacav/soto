@@ -34,12 +34,7 @@ extern "C" {
 #endif
 
 #include "headers/alsagw.h"
-#include "headers/thrd.h"
-
-#include <thdacav/thdacav.h>
-
-/** Opaque data type for sampling thread handler */
-typedef struct sampth_data sampth_t;
+#include "headers/genthrd.h"
 
 /** Subscribe a sampling thread to a thread pool.
  *
@@ -54,23 +49,8 @@ typedef struct sampth_data sampth_t;
  * @return This function just adds something to pool, therefore you may
  *         interpret its return value as if it were thrd_add().
  */
-int sampth_subscribe (sampth_t **handler, thrd_pool_t *pool,
+int sampth_subscribe (genth_t **handler, thrd_pool_t *pool,
                       const samp_t *samp, size_t scaling_factor);
-
-/** Request sampling termination.
- *
- * This call terminates the running sampler.
- *
- * @warning Before calling this function, take care to stop any thread
- *          reading using any getter, since this call will also cleanup
- *          memory for handler.
- *
- * @param handler The handler of the sampling thread.
- *
- * @retval 0 on success;
- * @retval -1 on failure (thread not started).
- */
-int sampth_sendkill (sampth_t *handler);
 
 /** Getter for the size of the reading buffer.
  *
@@ -78,7 +58,7 @@ int sampth_sendkill (sampth_t *handler);
  *
  * @return The size of the buffer in frames.
  */
-snd_pcm_uframes_t sampth_get_size (const sampth_t *handler);
+snd_pcm_uframes_t sampth_get_size (const genth_t *handler);
 
 /** Thread-safe getter for the content of the reading buffer.
  *
@@ -88,7 +68,7 @@ snd_pcm_uframes_t sampth_get_size (const sampth_t *handler);
  * @param handler The sampling thread which buffer shall be read;
  * @param buffer The buffer where the data shall be stored.
  */
-void sampth_get_samples (sampth_t *handler, samp_frame_t buffer[]);
+void sampth_get_samples (genth_t *handler, samp_frame_t buffer[]);
 
 /** Getter for the correct reading period for the buffer.
  *
@@ -97,7 +77,7 @@ void sampth_get_samples (sampth_t *handler, samp_frame_t buffer[]);
  * @return The time required by the thread to fill in its internal
  *         buffer.
  */
-const struct timespec * sampth_get_period (const sampth_t *handler);
+const struct timespec * sampth_get_period (const genth_t *handler);
 
 #ifdef __cplusplus
 }

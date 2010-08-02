@@ -60,7 +60,7 @@ typedef struct showth_data showth_t;
  *         interpret its return value as if it were thrd_add().
  */
 int showth_subscribe (showth_t **handle, thrd_pool_t *pool,
-                      sampth_t *sampth, plotgr_t *g0, plotgr_t *g1);
+                      genth_t *sampth, plotgr_t *g0, plotgr_t *g1);
 
 /** Request plotting termination.
  *

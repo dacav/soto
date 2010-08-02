@@ -35,14 +35,9 @@ struct sampth_data {
 
     samp_frame_t * buffer;              /* Reading buffer; */
     snd_pcm_uframes_t slot_size;        /* Size of a sample; */
-    size_t nslots;                    /* Room for samples; */
+    size_t nslots;                      /* Room for samples; */
     unsigned slot;                      /* Slot cursor; */
     pthread_mutex_t mux;                /* Mutex protecting the cursor; */
-
-    struct {
-        int active;             /* 1 if the thread is running; */
-        pthread_t self;         /* Handler used for termination; */
-    } thread;
 
     /* Sometimes alsa has tantrums and issues EAGAIN on reading (despite
      * this is not documented anywere, LOL). In this case we wait up to
@@ -57,26 +52,13 @@ struct sampth_data {
 /* This callback is pushed into the thread cleanup system. Acts like a
  * distructor, but works internally. This is better explained later. */
 static
-void destroy_cb (void *arg)
+int destroy_cb (void *arg)
 {
     struct sampth_data *ctx = (struct sampth_data *) arg;
 
     pthread_mutex_destroy(&ctx->mux);
-
     free((void *)ctx->buffer);
-    free(arg);
-}
 
-/* Thread initialization. */
-static
-int init_cb (void *arg)
-{
-    struct sampth_data *ctx = (struct sampth_data *) arg;
-
-    pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
-
-    ctx->thread.active = 1;
-    ctx->thread.self = pthread_self();
     return 0;
 }
 
@@ -145,18 +127,10 @@ int thread_cb (void *arg)
         LOG_FMT("Alsa fails: %s", snd_strerror(nread));
     }
 
-    /* Check cancellations. If it is the case the destroy_cb will manage
-     * memory deallocation. */
-    pthread_cleanup_push(destroy_cb, arg);
-    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-    pthread_testcancel();
-    pthread_cleanup_pop(0);
-    pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
-
     return 0;
 }
 
-int sampth_subscribe (sampth_t **handler, thrd_pool_t *pool,
+int sampth_subscribe (genth_t **handler, thrd_pool_t *pool,
                       const samp_t *samp, size_t scaling_factor)
 {
     thrd_info_t thi;
@@ -164,18 +138,17 @@ int sampth_subscribe (sampth_t **handler, thrd_pool_t *pool,
     const struct timespec * period;
     int err;
 
-    thi.init = init_cb;
+    thi.init = NULL;
     thi.callback = thread_cb;
-    thi.destroy = NULL;
+    thi.destroy = destroy_cb;
 
     /* Note: the thread is in charge of freeing this before shutting
-     *       down, unless everything fails on thrd_add().
+     *       down, unless everything fails on genth_subscribe().
      */
     thi.context = calloc(1, sizeof(struct sampth_data));
     assert(thi.context);
     ctx = (struct sampth_data *) thi.context;
     ctx->pcm = samp_get_pcm(samp);
-    ctx->thread.active = 0;
 
     ctx->nslots = scaling_factor;
     ctx->slot_size = samp_get_nframes(samp);
@@ -198,62 +171,41 @@ int sampth_subscribe (sampth_t **handler, thrd_pool_t *pool,
     /* Period request for the thread pool */
     rtutils_time_copy(&thi.period, period);
 
-    if ((err = thrd_add(pool, &thi)) != 0) {
+    if ((err = genth_subscribe(handler, pool, &thi)) != 0) {
         free(ctx->buffer);
         free(ctx);
-        *handler = NULL;
-    } else {
-        *handler = ctx;
     }
     return err;
 }
 
-int sampth_sendkill (sampth_t *handler)
+snd_pcm_uframes_t sampth_get_size (const genth_t *handler)
 {
-    if (handler == NULL) {
-        return -1;
-    }
-    if (handler->thread.active) {
-        int err;
-        
-        /* The cancellation will be checked explicitly in thread_cb().
-         * Also note that the thread pool (see headers/thrd.h) is in
-         * charge of joining the thread.
-         */
-        err = pthread_cancel(handler->thread.self);
-
-        assert(!err);
-        return 0;
-    } else {
-        return -1;
-    }
+    struct sampth_data *ctx = genth_get_context(handler);
+    return ctx->slot_size * ctx->nslots;
 }
 
-snd_pcm_uframes_t sampth_get_size (const sampth_t *handler)
+void sampth_get_samples (genth_t *handler, samp_frame_t buffer[])
 {
-    return handler->slot_size * handler->nslots;
-}
-
-void sampth_get_samples (sampth_t *handler, samp_frame_t buffer[])
-{
-    const size_t sls = handler->slot_size;
+    struct sampth_data *ctx = genth_get_context(handler);
+    const size_t sls = ctx->slot_size;
     unsigned slot;
     snd_pcm_uframes_t nframes;
 
-    pthread_mutex_lock(&handler->mux);
-    slot = handler->slot;
-    nframes = sls * (handler->nslots - slot);
+    pthread_mutex_lock(&ctx->mux);
+    slot = ctx->slot;
+    nframes = sls * (ctx->nslots - slot);
     memcpy((void *)buffer,
-           (const void *)&handler->buffer[sls * slot],
+           (const void *)&ctx->buffer[sls * slot],
            sizeof(samp_frame_t) * nframes);
     memcpy((void *)(buffer + nframes),
-           (const void *)handler->buffer,
+           (const void *)ctx->buffer,
            sizeof(samp_frame_t) * sls * slot);
-    pthread_mutex_unlock(&handler->mux);
+    pthread_mutex_unlock(&ctx->mux);
 }
 
-const struct timespec * sampth_get_period (const sampth_t *handler)
+const struct timespec * sampth_get_period (const genth_t *handler)
 {
-    return &handler->read_period;
+    struct sampth_data *ctx = genth_get_context(handler);
+    return &ctx->read_period;
 }
 

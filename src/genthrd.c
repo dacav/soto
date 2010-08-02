@@ -18,34 +18,44 @@
  *
  */
 
-#include <thdacav/thdacav.h>
 #include <stdint.h>
 
-#include "headers/show.h"
 #include "headers/logging.h"
-#include "headers/alsagw.h"
 #include "headers/constants.h"
 #include "headers/rtutils.h"
 #include "headers/plotting.h"
-#include "headers/sampthread.h"
+#include "headers/genthrd.h"
+#include "headers/thrd.h"
 
-struct showth_data {
-    samp_frame_t *buffer;
-    snd_pcm_uframes_t buflen;
-    genth_t *sampth;
+struct genth_data {
 
-    plotgr_t *g0, *g1;
+    /* This objects have the same semantics as in thrd_info_t structure.
+     * Since this module operates a sort of wrapper, here I keep the
+     * wrapped stuff. */
+    callback_t init;        
+    callback_t callback;
+    callback_t destroy;
+	void *context;
+
+    thrd_info_t user;
 
     struct {
         int active;             /* 1 if the thread is running; */
         pthread_t self;         /* Handler used for termination; */
     } thread;
+
 };
 
 static
 int init_cb (void *arg)
 {
-    struct showth_data *ctx = (struct showth_data *)arg;
+    struct genth_data *ctx = (struct genth_data *)arg;
+    thrd_info_t *user;
+
+    user = &ctx->user;
+    if (user->init != NULL && user->init(user->context)) {
+        return 1;
+    }
 
     pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
 
@@ -57,24 +67,22 @@ int init_cb (void *arg)
 static
 void destroy_cb (void *arg)
 {
-    struct showth_data *ctx = (struct showth_data *)arg;
+    struct genth_data *ctx = (struct genth_data *)arg;
 
-    free(ctx->buffer);
+    if (ctx->destroy) {
+        ctx->destroy(ctx->context);
+    }
     free(arg);
 }
 
 static
 int thread_cb (void *arg)
 {
-    unsigned i;
-    struct showth_data *ctx = (struct showth_data *)arg;
-    samp_frame_t *buffer;
+    struct genth_data *ctx = (struct genth_data *)arg;
 
-    buffer = ctx->buffer;
-    sampth_get_samples(ctx->sampth, buffer);
-    for (i = 0; i < ctx->buflen; i ++) {
-        plot_graphic_set(ctx->g0, i, buffer[i].ch0);
-        plot_graphic_set(ctx->g1, i, buffer[i].ch1);
+    if (ctx->callback(ctx->context)) {
+        destroy_cb(arg);
+        return 1;
     }
 
     /* Check cancellations. If it is the case the destroy_cb will manage
@@ -88,42 +96,30 @@ int thread_cb (void *arg)
     return 0;
 }
 
-int showth_subscribe (showth_t **handle, thrd_pool_t *pool,
-                      genth_t *sampth, plotgr_t *g0, plotgr_t *g1)
+int genth_subscribe (genth_t **handle, thrd_pool_t *pool,
+                     const thrd_info_t *info)
 {
     thrd_info_t thi;
-    struct showth_data *ctx;
+    struct genth_data *ctx;
     int err;
 
     thi.init = init_cb;
     thi.callback = thread_cb;
     thi.destroy = NULL;
+    rtutils_time_copy(&thi.delay, &info->delay);
+    rtutils_time_copy(&thi.period, &info->period);
 
-    ctx = calloc(1, sizeof(struct showth_data));
+    ctx = (struct genth_data *) calloc(1, sizeof(struct genth_data));
     assert(ctx);
     thi.context = (void *) ctx;
 
-    /* Common startup delay. */
-    thi.delay.tv_sec = SAMP_STARTUP_DELAY_SEC;
-    thi.delay.tv_nsec = SAMP_STARTUP_DELAY_nSEC;
-
-    /* The startup delay must be incremented in order to allow the
-     * sampling thread to fill at least one buffer. The same value is used
-     * to set the period. */
-    rtutils_time_increment(&thi.delay, sampth_get_period(sampth));
-    rtutils_time_copy(&thi.period, &thi.delay);
-
-    ctx->buflen = sampth_get_size(sampth);
-    ctx->buffer = calloc(ctx->buflen, sizeof(samp_frame_t));
-    assert(ctx->buffer);
-
+    ctx->init = info->init;
+    ctx->callback = info->callback;
+    ctx->destroy = info->destroy;
+    ctx->context = info->context;
     ctx->thread.active = 0;
-    ctx->sampth = sampth;
-    ctx->g0 = g0;
-    ctx->g1 = g1;
 
     if ((err = thrd_add(pool, &thi)) != 0) {
-        free(ctx->buffer);
         free(ctx);
         *handle = NULL;
     } else {
@@ -132,7 +128,7 @@ int showth_subscribe (showth_t **handle, thrd_pool_t *pool,
     return err;
 }
 
-int showth_sendkill (showth_t *handle)
+int genth_sendkill (genth_t *handle)
 {
     if (handle == NULL) {
         return -1;
@@ -153,3 +149,7 @@ int showth_sendkill (showth_t *handle)
     }
 }
 
+void * genth_get_context (const genth_t *handle)
+{
+    return handle->context;
+}
