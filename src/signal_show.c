@@ -18,7 +18,6 @@
  *
  */
 
-#include <thdacav/thdacav.h>
 #include <stdint.h>
 
 #include "headers/signal_show.h"
