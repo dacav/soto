@@ -13,5 +13,5 @@ soto_SOURCES = alsagw.c headers/alsagw.h \
                headers/constants.h \
                main.c
 
-soto_LDADD = -lasound -ldacav -lrt -lthdacav -lplot
+soto_LDADD = -lasound -ldacav -lrt -lplot -lfftw3
 

@@ -29,7 +29,6 @@
 extern "C" {
 #endif
 
-#include <thdacav/thdacav.h>
 #include <alsa/asoundlib.h>
 
 #include <time.h>

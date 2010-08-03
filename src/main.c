@@ -25,7 +25,6 @@
 #include <assert.h>
 
 #include <dacav/dacav.h>
-#include <thdacav/thdacav.h>
 
 #include <alsa/asoundlib.h>
 

@@ -20,7 +20,6 @@
 
 #include <signal.h>
 #include <alsa/asoundlib.h>
-#include <thdacav/thdacav.h>
 #include <stdint.h>
 #include <pthread.h>
 

@@ -31,8 +31,6 @@
 extern "C" {
 #endif
 
-#include <thdacav/thdacav.h>
-
 #include "headers/thrd.h"
 #include "headers/sampthread.h"
 #include "headers/plotting.h"
