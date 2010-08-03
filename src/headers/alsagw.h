@@ -42,7 +42,11 @@ extern "C" {
  */
 typedef struct samp samp_t;
 
-/** Sample type: just a pair of int16. */
+/** Sample type: just a pair of int16.
+ *
+ * For sake of simplicity the program manages audio streams in the format
+ * S16 LE PCM (Signed 16-bit Little-Endian Pulse Code Modulation).
+ */
 typedef struct {
     int16_t ch0;    /**< Channel 0; */
     int16_t ch1;    /**< Channel 1. */

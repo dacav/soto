@@ -42,9 +42,9 @@ int main (int argc, char **argv)
     samp_t *samp;
     genth_t *sampth;
     thrd_pool_t *pool;
-    plot_t *plot;
-    genth_t *plotth;
-    genth_t *showth;
+    plot_t *plot, *sigplot;
+    genth_t *plotth, *sigplotth;
+    genth_t *showth, *sigshowth;
     specth_graphics_t spec_graphs;
     int err;
 
@@ -63,7 +63,15 @@ int main (int argc, char **argv)
     plot = plot_new(4, sampth_get_size(sampth));
     if (plotth_subscribe(&plotth, pool, plot)) {
         thrd_err_t err = thrd_interr(pool);
-        LOG_FMT("Unable to start plotting thread 1: %s", thrd_strerr(pool, err));
+        LOG_FMT("Unable to start plotting thread 1: %s",
+                thrd_strerr(pool, err));
+        exit(EXIT_FAILURE);
+    }
+    sigplot = plot_new(2, sampth_get_size(sampth));
+    if (plotth_subscribe(&sigplotth, pool, sigplot)) {
+        thrd_err_t err = thrd_interr(pool);
+        LOG_FMT("Unable to start plotting thread 1: %s",
+                thrd_strerr(pool, err));
         exit(EXIT_FAILURE);
     }
  
@@ -73,8 +81,16 @@ int main (int argc, char **argv)
     spec_graphs.i1 = plot_new_graphic(plot);
     if (specth_subscribe(&showth, pool, sampth,
                          &spec_graphs)) {
-        thrd_err_t err = thrd_interr(pool);
-        LOG_FMT("Unable to startup: %s", thrd_strerr(pool, err));
+        LOG_FMT("Unable to start spectrum plotter: %s",
+                thrd_strerr(pool, thrd_interr(pool)));
+        exit(EXIT_FAILURE);
+    }
+
+    if (showth_subscribe(&sigshowth, pool, sampth,
+                         plot_new_graphic(sigplot),
+                         plot_new_graphic(sigplot))) {
+        LOG_FMT("Unable to start signal plotter: %s",
+                thrd_strerr(pool, thrd_interr(pool)));
         exit(EXIT_FAILURE);
     }
 
@@ -86,10 +102,13 @@ int main (int argc, char **argv)
 
     sleep(100);
 
-    genth_sendkill(showth);
     genth_sendkill(plotth);
-    plot_destroy(plot);
+    genth_sendkill(sigplotth);
+    genth_sendkill(sigshowth);
+    genth_sendkill(showth);
     genth_sendkill(sampth);
+
+    plot_destroy(plot);
     samp_destroy(samp);
     thrd_destroy(pool);
 

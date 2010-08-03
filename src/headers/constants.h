@@ -57,7 +57,7 @@ extern "C" {
 #define ALSA_WAIT_PROPORTION    2
 
 /** Size of the graphical window used for plotting. */
-#define PLOT_BITMAPSIZE         "800x500"
+#define PLOT_BITMAPSIZE         "400x250"
 
 /** Minimum plotable value. */
 #define PLOT_MIN_Y              INT16_MAX
