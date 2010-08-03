@@ -35,6 +35,7 @@
 #include "headers/plotting.h"
 #include "headers/plotthread.h"
 #include "headers/signal_show.h"
+#include "headers/spectrum_show.h"
 
 int main (int argc, char **argv)
 {
@@ -44,6 +45,7 @@ int main (int argc, char **argv)
     plot_t *plot;
     genth_t *plotth;
     genth_t *showth;
+    specth_graphics_t spec_graphs;
     int err;
 
     pool = thrd_new(0);
@@ -58,16 +60,19 @@ int main (int argc, char **argv)
         exit(EXIT_FAILURE);
     }
 
-    plot = plot_new(2, sampth_get_size(sampth));
+    plot = plot_new(4, sampth_get_size(sampth));
     if (plotth_subscribe(&plotth, pool, plot)) {
         thrd_err_t err = thrd_interr(pool);
-        LOG_FMT("Unable to startup: %s", thrd_strerr(pool, err));
+        LOG_FMT("Unable to start plotting thread 1: %s", thrd_strerr(pool, err));
         exit(EXIT_FAILURE);
     }
-
-    if (showth_subscribe(&showth, pool, sampth,
-                         plot_new_graphic(plot),
-                         plot_new_graphic(plot))) {
+ 
+    spec_graphs.r0 = plot_new_graphic(plot);
+    spec_graphs.i0 = plot_new_graphic(plot);
+    spec_graphs.r1 = plot_new_graphic(plot);
+    spec_graphs.i1 = plot_new_graphic(plot);
+    if (specth_subscribe(&showth, pool, sampth,
+                         &spec_graphs)) {
         thrd_err_t err = thrd_interr(pool);
         LOG_FMT("Unable to startup: %s", thrd_strerr(pool, err));
         exit(EXIT_FAILURE);
@@ -79,7 +84,7 @@ int main (int argc, char **argv)
         exit(EXIT_FAILURE);
     }
 
-    sleep(10);
+    sleep(100);
 
     genth_sendkill(showth);
     genth_sendkill(plotth);
@@ -87,4 +92,6 @@ int main (int argc, char **argv)
     genth_sendkill(sampth);
     samp_destroy(samp);
     thrd_destroy(pool);
+
+    exit(EXIT_SUCCESS);
 }

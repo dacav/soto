@@ -128,6 +128,8 @@ void draw_lines (plPlotter *plot, int16_t vals[], size_t nvals,
 {
     int i;
 
+    assert(nvals > 1);
+
     pl_move_r(plot, 0, vals[0] + offset);
     for (i = 1; i < nvals; i ++) {
         pl_cont_r(plot, i, vals[i] + offset);
@@ -155,7 +157,7 @@ void plot_graphic_set (plotgr_t *g, unsigned pos, int16_t val)
 {
     plot_t *p = g->main_plot;
 
-    assert(p->max_x > pos);
+    assert(pos < p->max_x);
 
     pthread_mutex_lock(&g->lock);
     g->values[pos] = val;
