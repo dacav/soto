@@ -20,10 +20,8 @@
 
 /** @file constants.h
  *
- *  This header provides various constant definitions.
+ * This header provides various constant definitions.
  */
-
-// TODO: Configuration via autotools.
 
 #ifndef __defined_headers_constants_h
 #define __defined_headers_constants_h

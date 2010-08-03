@@ -18,11 +18,10 @@
  *
  */
 
-/** @file showthread.h
+/** @file signal_show.h
  *
- * This module provieds a clean interface to pool (headers/thrd.h)
- * subscription of the thread in charge of doing the data elaboration
- * phase.
+ * This module provieds the subscription through genthrd of a
+ * thread in charge of displaying the raw data.
  *
  */
 

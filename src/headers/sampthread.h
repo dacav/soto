@@ -23,6 +23,8 @@
  * This module provieds a clean interface to pool (headers/thrd.h)
  * subscription of the thread in charge of doing the sampling phase.
  *
+ * @warning The wise programmer avoids two sampling thread
+ *          simultaneously!
  */
 
 /** @file sampthread.h */
@@ -42,9 +44,10 @@ extern "C" {
  *                handler address will be stored;
  * @param pool The pool used for subscribing;
  * @param samp The sampler;
+ * @param scaling_factor A multiplicative factor determining how many
+ *        single samples the thread will be able to store.
  *
  * @see headers/alsagw.h.
- * @see headers/thrd.h.
  *
  * @return This function just adds something to pool, therefore you may
  *         interpret its return value as if it were thrd_add().

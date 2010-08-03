@@ -48,6 +48,15 @@
 #define THRD_POOL_CONDITION \
     ( THRD_POOL_ACTIVE | THRD_POOL_KILLALL )
 
+struct thrd_pool {
+    dlist_t *threads;        /**< List of thrd_t objects. (@see thrd.c) */
+    size_t nthreads;         /**< Number of sampling threads. */
+
+    uint8_t status;          /**< Status flags */
+    int err;                 /**< Stores error codes. */
+    int minprio;             /**< Minimum priority */
+};
+
 /* Internal descriptor for a thread */
 typedef struct {
 

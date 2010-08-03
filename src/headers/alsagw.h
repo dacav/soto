@@ -43,10 +43,10 @@ extern "C" {
  */
 typedef struct samp samp_t;
 
-/** Sample type: just a pair of int16 */
+/** Sample type: just a pair of int16. */
 typedef struct {
-    int16_t ch0;
-    int16_t ch1;
+    int16_t ch0;    /**< Channel 0; */
+    int16_t ch1;    /**< Channel 1. */
 } samp_frame_t;
 
 /** Constructor for the sampler.
@@ -54,8 +54,12 @@ typedef struct {
  * @param device The alsa device (e.g. "hw0:0");
  * @param rate The sampling rate;
  * @param channels Number of channels. Allowed values: 1 or 2.
+ * @param err The pointer where the library error, if any, will be stored.
  *
- * @return The newly allocated sampler.
+ * @note In case of error, the snd_strerror() provided by Alsa can be used
+ *       on err.
+ *
+ * @return The newly allocated sampler or NULL on error.
  */
 samp_t * samp_new (const char *device, unsigned rate,
                    uint8_t channels, int *err);

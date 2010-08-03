@@ -18,15 +18,15 @@
  *
  */
 
-/*
-
-   This module provieds a real-time thread pool with periodic threads
-   managed in a Rate Monotonic flavour.
-
-   Each Thread can be specified with a reentrant callback (which can be
-   provided with a user private data), a period of activation and a delay
-   for the first activation.
-
+/** @file thrd.h
+ *
+ * This module provieds a real-time thread pool with periodic threads
+ * managed in a Rate Monotonic flavour.
+ *
+ * Each Thread can be specified with a reentrant callback (which can be
+ * provided with a user private data), a period of activation and a delay
+ * for the first activation.
+ *
  */
 
 #ifndef __defined_headers_thrd_h
@@ -92,14 +92,7 @@ typedef struct {
 } thrd_info_t;
 
 /** Pool of real-time threads */
-typedef struct {
-    dlist_t *threads;        /**< List of thrd_t objects. (@see thrd.c) */
-    size_t nthreads;         /**< Number of sampling threads. */
-
-    uint8_t status;          /**< Status flags */
-    int err;                 /**< Stores error codes. */
-    int minprio;             /**< Minimum priority */
-} thrd_pool_t;
+typedef struct thrd_pool thrd_pool_t;
 
 /** Possible errors */
 typedef enum {
@@ -122,7 +115,7 @@ thrd_pool_t * thrd_new (unsigned minprio);
  * This function is blocking: the pool will join all its threads before
  * freeing memory.
  *
- * @pool The pool to be freed.
+ * @param pool The pool to be freed.
  */
 void thrd_destroy (thrd_pool_t *pool);
 
@@ -166,7 +159,9 @@ thrd_err_t thrd_interr (thrd_pool_t *pool);
 
 /** Get error description string.
  *
- * @param err The error;
+ * @param pool The pool.
+ * @param err The error obtained as return value of thrd_interr().
+ *
  * @return The internal error description for the errors, strerror(3)
  *         return value when err is THRD_ERR_LIBRARY.
  */
