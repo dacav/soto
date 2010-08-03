@@ -15,6 +15,10 @@ AC_ARG_ENABLE([debug],
               AS_HELP_STRING([--enable-debug], [Enable verbosity]),
               AC_DEFINE([DEBUG_ENABLED], [], [Debugging log enabled]))
 
+AC_ARG_ENABLE([realtime],
+              AS_HELP_STRING([--disable-realtime], [Disable realtime priority]),
+              AC_DEFINE([RT_DISABLE], [], [Debugging log enabled]))
+
 # Checks for header files.
 AC_CHECK_HEADER([alsa/asoundlib.h], [],
                 [AC_MSG_ERROR([Please install libasound2.])])

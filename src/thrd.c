@@ -20,6 +20,7 @@
 
 #include "headers/thrd.h"
 #include "headers/rtutils.h"
+#include "headers/config.h"
 
 #include <sched.h>
 #include <error.h>
@@ -129,11 +130,15 @@ void * thread_routine (void * arg)
 static
 int startup(thrd_t *thrd, struct timespec *enabtime)
 {   
+
+    #ifndef RT_DISABLE
     pthread_attr_t attr;
-    int err;
     struct sched_param param = {
         .sched_priority = thrd->priority
     };
+    #endif
+
+    int err;
 
     DEBUG_TIMESPEC("Activating thread with period", thrd->info.period);
 
@@ -144,6 +149,7 @@ int startup(thrd_t *thrd, struct timespec *enabtime)
            sizeof(struct timespec));
     rtutils_time_increment(&thrd->start, &thrd->info.delay);
 
+    #ifndef RT_DISABLE
     /* Setting thread as real-time, scheduled as FIFO and with the given
      * priority. */
     err = pthread_attr_init(&attr);
@@ -158,6 +164,11 @@ int startup(thrd_t *thrd, struct timespec *enabtime)
     err = pthread_create(&thrd->handler, &attr, thread_routine,
                          (void *) thrd);
     pthread_attr_destroy(&attr);
+    #else
+    err = pthread_create(&thrd->handler, NULL, thread_routine,
+                         (void *) thrd);
+    #endif
+
     if (err != 0) return err;
 
     /* Activation achieved: update flags. */

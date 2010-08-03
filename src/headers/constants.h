@@ -59,6 +59,12 @@ extern "C" {
 /** Size of the graphical window used for plotting. */
 #define PLOT_BITMAPSIZE         "400x250"
 
+/** Color of the plotting line. */
+#define PLOT_LINECOLOR          "green"
+
+/** Color of the plotting background. */
+#define PLOT_BGCOLOR            "black"
+
 /** Minimum plotable value. */
 #define PLOT_MIN_Y              INT16_MAX
 

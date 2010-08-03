@@ -66,6 +66,8 @@ plPlotter * init_libplot (size_t nplots, int max_x)
     assert(err >= 0);
     err = pl_setplparam(params, "USE_DOUBLE_BUFFERING", "yes");
     assert(err >= 0);
+    err = pl_setplparam(params, "BG_COLOR", PLOT_BGCOLOR);
+    assert(err >= 0);
 
     plot = pl_newpl_r("X", NULL, NULL, stderr, params);
     assert(plot);
@@ -79,7 +81,7 @@ plPlotter * init_libplot (size_t nplots, int max_x)
     assert(err >= 0);
 	err = pl_linewidth_r(plot, 1);
     assert(err >= 0);
-	err = pl_pencolorname_r(plot, "black");
+	err = pl_pencolorname_r(plot, PLOT_LINECOLOR);
     assert(err >= 0);
 
     return plot;
