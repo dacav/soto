@@ -28,6 +28,7 @@
 
 #include <alsa/asoundlib.h>
 
+#include "headers/config.h"
 #include "headers/alsagw.h"
 #include "headers/logging.h"
 #include "headers/sampthread.h"
@@ -113,6 +114,7 @@ int main (int argc, char **argv)
     samp_destroy(samp);
     thrd_destroy(pool, &miss);
 
+    LOG_MSG("EVERYTHING WORKED CORRECTLY, SHUTTING DOWN");
     LOG_FMT("We had %llu deadline misses", miss);
 
     exit(EXIT_SUCCESS);

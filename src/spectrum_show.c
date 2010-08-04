@@ -57,6 +57,9 @@ int destroy_cb (void *arg)
     struct specth_data *ctx = (struct specth_data *)arg;
 
     free(ctx->buffer);
+    fftw_destroy_plan(ctx->ft.plan);
+    fftw_free(ctx->ft.in);
+    fftw_free(ctx->ft.out);
     free(arg);
 
     return 0;
