@@ -20,7 +20,7 @@
 
 /** @file alsagw.h
  *
- * This module hides the configuration of alsa and provides a simple
+ * This module hides Alsa's weird bogus under a hood, providing a simple
  * initialization/finalization interface.
  */
 
@@ -83,12 +83,23 @@ const struct timespec * samp_get_period (const samp_t *samp);
  */
 snd_pcm_uframes_t samp_get_nframes (const samp_t *samp);
 
-/** Getter for the ALSA pcm.
+/* Semi-blocking read of a sample.
  *
- * @param samp The sampler.
- * @return The pcm handler.
+ * This function automatically recovers xruns and errors.
+ *
+ * @param samp The sampler;
+ * @param buffer The destination buffer;
+ * @param bufsize The destination buffer's size;
+ * @param maxwait The maximum blocking time (in nanoseconds);
+ *
+ * @return The number of read frames or a negative error code in case of
+ *         failure.
+ *
+ * @note In case of failure, please relay on snd_strerr() in order to
+ *       determine what's going on.
  */
-snd_pcm_t * samp_get_pcm (const samp_t *samp);
+int samp_read (samp_t *samp, samp_frame_t *buffer,
+               snd_pcm_uframes_t bufsize, int maxwait);
 
 /** Getter for the sampling rate.
  *

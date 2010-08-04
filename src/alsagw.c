@@ -83,11 +83,6 @@ snd_pcm_uframes_t samp_get_nframes (const samp_t *samp)
     return samp->nframes;
 }
 
-snd_pcm_t * samp_get_pcm (const samp_t *samp)
-{
-    return samp->pcm;
-}
-
 unsigned samp_get_rate (const samp_t *samp)
 {
     return samp->rate;
@@ -134,3 +129,50 @@ void samp_destroy (samp_t *s)
         free(s);
     }
 }
+
+int samp_read (samp_t *samp, samp_frame_t *buffer,
+               snd_pcm_uframes_t bufsize, int maxwait)
+{
+    int nread;
+    snd_pcm_t *pcm = samp->pcm;
+
+    nread = (int) snd_pcm_readi(pcm, buffer, bufsize);
+    if (nread > 0) {
+        /* Everything worked correctly. */
+        return nread;
+    }
+
+    /* Note: alsa errors are unix ones, but negative */
+    switch (nread) {
+        case -EPIPE:
+            LOG_MSG("Got overrun");
+            if (snd_pcm_recover(pcm, nread, 0)) {
+                LOG_MSG("Overrun handling failure");
+            }
+            nread = 1;
+        case -EAGAIN:
+            /* Smelly undocumented failure, which turns out to be
+             * recoverable with a little waiting before trying again. This
+             * can be achieved by snd_pcm_wait, which btw requires the
+             * value to be expressed in microseconds (hence maxwait/10).
+             */
+            LOG_MSG("Waiting resource");
+            nread = snd_pcm_wait(pcm, maxwait / 10);
+    }
+
+    /* After the recover we retry to read data once, if it fails again we
+     * just skip to next activation and abort this job */
+    switch (nread) {
+        case 1:
+            return (int) snd_pcm_readi(pcm, buffer, bufsize);
+        case 0:
+            return -EAGAIN;
+        case -EPIPE:
+            return snd_pcm_recover(pcm, nread, 0);
+        default:
+            /* Everything is badly documented here. Let the snd_strerr
+             * decide what is this, I did the best effort to recover. */
+            return nread;
+    }
+}
+

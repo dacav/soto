@@ -30,7 +30,7 @@
 
 /* Sampling thread internal information set. */
 struct sampth_data {
-    snd_pcm_t *pcm;                     /* Alsa handler; */
+    samp_t *sampler;                    /* Alsa handler; */
 
     samp_frame_t * buffer;              /* Reading buffer; */
     snd_pcm_uframes_t slot_size;        /* Size of a sample; */
@@ -61,52 +61,6 @@ int destroy_cb (void *arg)
     return 0;
 }
 
-/* This function hides Alsa weird bogus under the hood. */
-static
-int alsa_read (snd_pcm_t *pcm, samp_frame_t *buffer,
-               snd_pcm_uframes_t bufsize, int maxwait)
-{
-    int nread;
-
-    nread = (int) snd_pcm_readi(pcm, buffer, bufsize);
-    if (nread > 0) {
-        /* Everything worked correctly. */
-        return nread;
-    }
-
-    /* Note: alsa errors are negative */
-    switch (nread) {
-        case -EPIPE:
-            LOG_MSG("Got overrun");
-            if (snd_pcm_recover(pcm, nread, 0)) {
-                LOG_MSG("Overrun handling failure");
-            }
-            nread = 1;
-        case -EAGAIN:
-            /* Smelly undocumented failure, which turns out to be
-             * recoverable with a little waiting before trying again. This
-             * can be achieved by snd_pcm_wait, which btw requires the
-             * value expressed in microseconds (hence maxwait/10). */
-            LOG_MSG("Waiting resource");
-            nread = snd_pcm_wait(pcm, maxwait / 10);
-    }
-
-    /* After the recover we retry to read data once, if it fails again we
-     * just skip to next activation and abort this job */
-    switch (nread) {
-        case 1:
-            return (int) snd_pcm_readi(pcm, buffer, bufsize);
-        case 0:
-            return -EAGAIN;
-        case -EPIPE:
-            return snd_pcm_recover(pcm, nread, 0);
-        default:
-            /* Everything is badly documented here. Let the snd_strerr
-             * decide what is this, I did the best effort to recover. */
-            return nread;
-    }
-}
-
 /* Core of the sampling */
 static
 int thread_cb (void *arg)
@@ -117,7 +71,7 @@ int thread_cb (void *arg)
 
     pthread_mutex_lock(&ctx->mux);
     slot = ctx->slot;
-    nread = alsa_read(ctx->pcm, ctx->buffer + slot * ctx->slot_size,
+    nread = samp_read(ctx->sampler, ctx->buffer + slot * ctx->slot_size,
                       ctx->slot_size, ctx->alsa_wait_max);
     ctx->slot = (slot + 1) % ctx->nslots;
     pthread_mutex_unlock(&ctx->mux);
@@ -130,7 +84,7 @@ int thread_cb (void *arg)
 }
 
 int sampth_subscribe (genth_t **handler, thrd_pool_t *pool,
-                      const samp_t *samp, size_t scaling_factor)
+                      samp_t *samp, size_t scaling_factor)
 {
     thrd_info_t thi;
     struct sampth_data *ctx;
@@ -147,7 +101,7 @@ int sampth_subscribe (genth_t **handler, thrd_pool_t *pool,
     thi.context = calloc(1, sizeof(struct sampth_data));
     assert(thi.context);
     ctx = (struct sampth_data *) thi.context;
-    ctx->pcm = samp_get_pcm(samp);
+    ctx->sampler = samp;
 
     ctx->nslots = scaling_factor;
     ctx->slot_size = samp_get_nframes(samp);

@@ -53,7 +53,7 @@ extern "C" {
  *         interpret its return value as if it were thrd_add().
  */
 int sampth_subscribe (genth_t **handler, thrd_pool_t *pool,
-                      const samp_t *samp, size_t scaling_factor);
+                      samp_t *samp, size_t scaling_factor);
 
 /** Getter for the size of the reading buffer.
  *
