@@ -32,9 +32,9 @@ struct genth_data {
     /* This objects have the same semantics as in thrd_info_t structure.
      * Since this module operates a sort of wrapper, here I keep the
      * wrapped stuff. */
-    callback_t init;        
-    callback_t callback;
-    callback_t destroy;
+    thrd_cb_t init;
+    thrd_cb_t callback;
+    thrd_cb_t destroy;
 	void *context;
 
     thrd_info_t user;
