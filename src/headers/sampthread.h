@@ -48,6 +48,7 @@ extern "C" {
  *        single samples the thread will be able to store.
  *
  * @see headers/alsagw.h.
+ * @see genth_subscribe()  XXX
  *
  * @return This function just adds something to pool, therefore you may
  *         interpret its return value as if it were thrd_add().

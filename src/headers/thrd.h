@@ -18,16 +18,9 @@
  *
  */
 
-/** @file thrd.h
- *
- * This module provieds a real-time thread pool with periodic threads
- * managed in a Rate Monotonic flavour.
- *
- * Each Thread can be specified with a reentrant callback (which can be
- * provided with a user private data), a period of activation and a delay
- * for the first activation.
- *
- */
+/** @file thrd.h */
+/** @addtogroup Thrd */
+/*@{*/
 
 #ifndef __defined_headers_thrd_h
 #define __defined_headers_thrd_h
@@ -43,12 +36,12 @@ extern "C" {
 #include "headers/logging.h"
 
 /** Callback of the thread
-*
-* @param context The specified user data;
-* @return zero in order to keep the thread running. Any other value
-*         stops the periodic execution.
-*/
-typedef int (* callback_t) (void *context);
+ *
+ * @param context The specified user data;
+ * @return zero in order to keep the thread running. Any other value
+ *         stops the periodic execution.
+ */
+typedef int (* thrd_cb_t) (void *context);
 
 /** User definition for the thread.
  *
@@ -63,7 +56,7 @@ typedef struct {
      * @return zero in order to let the execution start. Any other value
      *         aborts the execution.
      */
-    callback_t init;        
+    thrd_cb_t init;        
 
     /** Business logic of the thread. You must provide it.
      *
@@ -71,7 +64,7 @@ typedef struct {
      * @return zero in order to keep the thread running. Any other value
      *         stops the periodic execution.
      */
-    callback_t callback;
+    thrd_cb_t callback;
     
     /** Called by the thread before termination. You may specify it as
      * NULL. 
@@ -79,7 +72,7 @@ typedef struct {
      * @param context The specified user data;
      * @return Ignored.
      */
-    callback_t destroy;
+    thrd_cb_t destroy;
 
     /** Context of thrd_info_t::init, thrd_info_t::callback and
      *  thrd_info_t::final
@@ -168,6 +161,8 @@ thrd_err_t thrd_interr (thrd_pool_t *pool);
  *         return value when err is THRD_ERR_LIBRARY.
  */
 const char * thrd_strerr (thrd_pool_t *pool, thrd_err_t err);
+
+/*@}*/
 
 #ifdef __cplusplus
 }

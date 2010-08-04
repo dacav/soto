@@ -18,11 +18,9 @@
  *
  */
 
-/** @file alsagw.h
- *
- * This module hides Alsa's weird bogus under a hood, providing a simple
- * initialization/finalization interface.
- */
+/** @file alsagw.h */
+/** @addtogroup AlsaGw */
+/*@{*/
 
 #ifndef __defined_headers_alsagw_h
 #define __defined_headers_alsagw_h
@@ -83,7 +81,7 @@ const struct timespec * samp_get_period (const samp_t *samp);
  */
 snd_pcm_uframes_t samp_get_nframes (const samp_t *samp);
 
-/* Semi-blocking read of a sample.
+/** Semi-blocking read of a sample.
  *
  * This function automatically recovers xruns and errors.
  *
@@ -97,6 +95,10 @@ snd_pcm_uframes_t samp_get_nframes (const samp_t *samp);
  *
  * @note In case of failure, please relay on snd_strerr() in order to
  *       determine what's going on.
+ *
+ * @warning By providing a negative value for maxwait we allow Alsa to
+ *          wait until the resource is available. Namely this will make
+ *          this function blocking.
  */
 int samp_read (samp_t *samp, samp_frame_t *buffer,
                snd_pcm_uframes_t bufsize, int maxwait);
@@ -116,9 +118,14 @@ unsigned samp_get_rate (const samp_t *samp);
 
 /** Destroyer.
  *
+ * @warning Please do not forget to disable any thread using the sampler
+ *          before using this function.
+ *
  * @param s The sampler to be destroyed.
  */
 void samp_destroy (samp_t *s);
+
+/*@}*/
 
 #ifdef __cplusplus
 }
