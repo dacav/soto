@@ -20,7 +20,8 @@
 
 /** @file alsagw.h
  *
- * This module provieds an interface to the alsa system.
+ * This module hides the configuration of alsa and provides a simple
+ * initialization/finalization interface.
  */
 
 #ifndef __defined_headers_alsagw_h
@@ -34,11 +35,9 @@ extern "C" {
 #include <time.h>
 #include <stdint.h>
 
-/** Sampling system descriptor.
+/** Opaque type for the sampling system descriptor.
  *
- * This must be allocated but managed trough proper functions.
- *
- * @see samp_init.
+ * The samp_new() function allocates and intializes a new descriptor.
  */
 typedef struct samp samp_t;
 
@@ -55,21 +54,21 @@ typedef struct {
 /** Constructor for the sampler.
  *
  * @param device The alsa device (e.g. "hw0:0");
- * @param rate The sampling rate;
- * @param channels Number of channels. Allowed values: 1 or 2.
- * @param err The pointer where the library error, if any, will be stored.
+ * @param rate The sampling rate (e.g. 44100);
+ * @param err The pointer where, if needed, library error will be stored.
  *
  * @note In case of error, the snd_strerror() provided by Alsa can be used
- *       on err.
+ *       on the integer pointed by err.
  *
- * @return The newly allocated sampler or NULL on error.
+ * @return The newly allocated sampler.
+ * @retval NULL if something went wrong (in which case check err).
  */
 samp_t * samp_new (const char *device, unsigned rate,
                    uint8_t channels, int *err);
 
 /** Getter for the computed period.
  *
- * @param samp The sampler;
+ * @param samp The sampler.
  * @return The time between reads.
  */
 const struct timespec * samp_get_period (const samp_t *samp);
@@ -96,9 +95,10 @@ snd_pcm_t * samp_get_pcm (const samp_t *samp);
  * @param samp The sampler.
  * @return The sampling rate.
  *
- * @note Alsa may decide to modify the sample rate given by the
- *       constructor in order to fit soundcard specification, therefore
- *       it's wise to relay on the rate returned by this function, instead
+ * @note This should be the same rate you gave as input for samp_new(),
+ *       however Alsa may decide to modify the sample rate given by the
+ *       constructor in order to fit soundcard specification. The wise
+ *       programmer relies on the rate returned by this function, instead
  *       of using the one provided as parameter for samp_new().
  */
 unsigned samp_get_rate (const samp_t *samp);
