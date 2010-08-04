@@ -4,4 +4,12 @@ SUBDIRS = src
 .PHONY : doc
 
 doc:
-	cd doc; doxygen; cd ..
+	cat doc/Doxyfile | doxygen -
+
+report:
+	(cat doc/Doxyfile ;\
+	 echo "GENERATE_HTML=NO" ;\
+	 echo "GENERATE_LATEX=YES" ;\
+	 echo "INPUT=src/headers/doc.h" ;\
+	) | doxygen -
+
