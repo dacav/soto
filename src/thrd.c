@@ -50,26 +50,27 @@
     ( THRD_POOL_ACTIVE | THRD_POOL_KILLALL )
 
 struct thrd_pool {
-    dlist_t *threads;        /**< List of thrd_t objects. (@see thrd.c) */
-    size_t nthreads;         /**< Number of sampling threads. */
+    dlist_t *threads;        /**< List of thrd_t objects (@see thrd.c); */
+    size_t nthreads;         /**< Number of sampling threads; */
 
-    uint8_t status;          /**< Status flags */
-    int err;                 /**< Stores error codes. */
-    int minprio;             /**< Minimum priority */
+    uint8_t status;          /**< Status flags: */
+    int err;                 /**< Stores error codes; */
+    int minprio;             /**< Minimum priority. */
 };
 
 /* Internal descriptor for a thread */
 typedef struct {
 
-    int priority;               /* Thread's priority */
-    pthread_t handler;          /* Handler of the thread. */
-    uint8_t status;             /* Status flags. */
+    int priority;               /* Thread's priority; */
+    pthread_t handler;          /* Handler of the thread; */
+    uint8_t status;             /* Status flags; */
     thrd_info_t info;           /* User defined thread info. Defined in
-                                   headers/thrd.h */
+                                   headers/thrd.h; */
 
     struct timespec start;      /* Pool start time, used for computing the
-                                   delay during startup phase. */
+                                   delay during startup phase; */
 
+    unsigned dmiss_count;       /* Deadline miss counter. */
 } thrd_t; 
 
 /* Each real-time thread of this project actually corresponds to the
@@ -117,7 +118,8 @@ void * thread_routine (void * arg)
         }
         rtutils_get_now(&finish_time);
         if (rtutils_time_cmp(&next_act, &finish_time) > 0) {
-            LOG_MSG("Deadline miss");
+            DEBUG_MSG("Deadline miss");
+            thrd->dmiss_count ++;
         }
 
         rtutils_wait(&next_act);
@@ -148,6 +150,7 @@ int startup(thrd_t *thrd, struct timespec *enabtime)
     memcpy((void *) &thrd->start, (const void *)enabtime,
            sizeof(struct timespec));
     rtutils_time_increment(&thrd->start, &thrd->info.delay);
+    thrd->dmiss_count = 0;
 
     #ifndef RT_DISABLE
     /* Setting thread as real-time, scheduled as FIFO and with the given
@@ -322,8 +325,20 @@ void free_thread (void *thrd)
     free(t);
 }
 
-void thrd_destroy (thrd_pool_t *pool)
+void thrd_destroy (thrd_pool_t *pool, unsigned long long *miss)
 {
+    diter_t *i;
+    unsigned long long m = 0;
+
+    if (miss != NULL) {
+        i = dlist_iter_new(&pool->threads);
+        while (diter_hasnext(i)) {
+            thrd_t *t = diter_next(i);
+            m += t->dmiss_count;
+        }
+        dlist_iter_free(i);
+        *miss = m;
+    }
     dlist_free(pool->threads, free_thread);
 }
 

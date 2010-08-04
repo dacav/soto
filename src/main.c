@@ -46,6 +46,7 @@ int main (int argc, char **argv)
     genth_t *plotth, *sigplotth;
     genth_t *showth, *sigshowth;
     specth_graphics_t spec_graphs;
+    long long unsigned miss;
     int err;
 
     pool = thrd_new(0);
@@ -110,7 +111,9 @@ int main (int argc, char **argv)
 
     plot_destroy(plot);
     samp_destroy(samp);
-    thrd_destroy(pool);
+    thrd_destroy(pool, &miss);
+
+    LOG_FMT("We had %llu deadline misses", miss);
 
     exit(EXIT_SUCCESS);
 }

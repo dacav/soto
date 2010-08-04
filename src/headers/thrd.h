@@ -116,8 +116,10 @@ thrd_pool_t * thrd_new (unsigned minprio);
  * freeing memory.
  *
  * @param pool The pool to be freed.
+ * @param miss If provided, this long long integer will contain the total
+ *             number of deadline misses.
  */
-void thrd_destroy (thrd_pool_t *pool);
+void thrd_destroy (thrd_pool_t *pool, unsigned long long *miss);
 
 /** Add a new thread to the pool
  *
