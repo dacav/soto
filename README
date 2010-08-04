@@ -15,3 +15,14 @@ Compliation and dependency:
     The compilation is uses the standard autotools process. See the
     INSTALL file for detailed information.
 
+    The "configure" script accepts the following extra configuration options:
+
+    --enable-debug     :    Enables the DEBUG_* macros defined in
+                            src/headers/logging.h giving a greater level
+                            of verbosity;
+
+    --disable-realtime :    Disables the priority assignment and other
+                            real-time related features. This allows the
+                            non-root user to execute the program, but
+                            increases the latency and the probability of
+                            missing the deadlines.
