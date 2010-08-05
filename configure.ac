@@ -26,12 +26,14 @@ AC_CHECK_HEADER([dacav/dacav.h], [],
                 [AC_MSG_ERROR([Please install libdacav (>= 0.4.2).])])
 AC_CHECK_HEADER([plot.h], [],
                 [AC_MSG_ERROR([Please install libplot.])])
+AC_CHECK_HEADER([fftw3.h], [],
+                [AC_MSG_ERROR([Please install libfftw (>= 3.2.1).])])
 
 # Checks for libraries.
 AC_CHECK_LIB([dacav], [dlist_sort], [],
              [AC_MSG_ERROR([libdacav version required: >= 0.4.2]).])
-AC_CHECK_LIB([thdacav], [thdqueue_new], [],
-             [AC_MSG_ERROR([libdacav version required: >= 0.4.2]).])
+AC_CHECK_LIB([fftw3], [fftw_plan_dft_r2c_1d], [],
+             [AC_MSG_ERROR([libfftw version required: >= 3.2.1]).])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_TYPE_SIZE_T
