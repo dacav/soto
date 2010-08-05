@@ -103,6 +103,7 @@ int sampth_subscribe (genth_t **handler, thrd_pool_t *pool,
     ctx = (struct sampth_data *) thi.context;
     ctx->sampler = samp;
 
+    DEBUG_FMT("Scaling factor %d\n", (int) scaling_factor);
     ctx->nslots = scaling_factor;
     ctx->slot_size = samp_get_nframes(samp);
     ctx->buffer = (samp_frame_t *) calloc(scaling_factor * ctx->slot_size,

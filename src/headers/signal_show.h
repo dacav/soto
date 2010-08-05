@@ -25,8 +25,8 @@
  *
  */
 
-#ifndef __defined_headers_showthread_h
-#define __defined_headers_showthread_h
+#ifndef __defined_headers_signthread_h
+#define __defined_headers_signthread_h
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -53,11 +53,11 @@ extern "C" {
  * @return This function just adds something to pool, therefore you may
  *         interpret its return value as if it were thrd_add().
  */
-int showth_subscribe (genth_t **handle, thrd_pool_t *pool,
+int signth_subscribe (genth_t **handle, thrd_pool_t *pool,
                       genth_t *sampth, plotgr_t *g0, plotgr_t *g1);
 
 #ifdef __cplusplus
 }
 #endif
-#endif // __defined_headers_showthread_h
+#endif // __defined_headers_signthread_h
 

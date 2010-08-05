@@ -26,54 +26,73 @@
 #include <stdio.h>
 #include <getopt.h>
 #include <string.h>
+#include <strings.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <sched.h>
 #include <assert.h>
+#include <stdbool.h>
 
-static const char optstring[] = "d:r:m:N:p:B:c:h";
+struct opts {
+
+    const char *device;         /**< PCM device */
+    unsigned rate;              /**< Sample rate; */
+    
+    /* Minimum priority value to be used. This will be added to the
+     * result of the sched_get_priority_min() syscall.
+     */
+    int minprio;
+
+    /* What shall be shown */
+    enum {
+        SHOW_NOTHING  = 0,
+        SHOW_SIGNAL   = 1 << 0,
+        SHOW_SPECTRUM = 1 << 1,
+        SHOW_BOTH     = 1 | (1 << 1)
+    } show;
+
+    /* Multiplicative factor that defines the proportion between the
+     * alsa-defined sampling buffer size and the buffer where the samples
+     * shall be stored */
+    unsigned buffer_scale;
+
+    unsigned run_for;
+};
+
+static const char optstring[] = "d:r:m:U::u::s:t:h";
 static const struct option longopts[] = {
-    {"alsa-dev", 1, NULL, 'd'},
-    {"alsa-rate", 1, NULL, 'r'},      // rate 
-    {"alsa-mode", 1, NULL, 'm'},      // mono, stereo
-    {"min-prio", 1, NULL, 'p'},
-    {"plotters", 1, NULL, 'N'},
-    {"sample-buffer", 1, NULL, 'B'},
-    {"constraint", 1, NULL, 'c'},
+    {"dev", 1, NULL, 'd'},
+    {"rate", 1, NULL, 'r'},
+    {"minprio", 1, NULL, 'm'},
+    {"show-spectrum", 2, NULL, 'U'},
+    {"show-signal", 2, NULL, 'u'},
+    {"buffer-scale", 1, NULL, 's'},
+    {"run-for", 1, NULL, 't'},
     {"help", 0, NULL, 'h'},
     {NULL, 0, NULL, 0}
-};
-
-static const char *avail_mode[] = {
-    "mono", "stereo", NULL
-};
-
-static const char *avail_policy[] = {
-    "fixrate", "fixperiod"
 };
 
 static const char help [] =
 "\n" PACKAGE_STRING "\n"
 "Usage: %s [options]\n\n"
-"  --alsa-dev={dev} | -d {dev}\n"
-"        Specify an audio device (default: \"hw:0,0\");\n\n"
-"  --alsa-rate={rate} | -r {rate}\n"
+"  --dev={dev} | -d {dev}\n"
+"        Specify an audio device (default: \"" DEFAULT_DEVICE "\");\n\n"
+"  --rate={rate} | -r {rate}\n"
 "        Specify a sample rate for ALSA in Hertz (default: 44100);\n\n"
-"  --alsa-mode={mode} | -m {mode}\n"
-"        Specify a sample mode (default: stereo, also mono is\n"
-"        available);\n\n"
-"  --sample-buffer={count} | -B {count}\n"
-"        Specify the number of samples (according to the '--alsa-rate'\n"
-"        parameter) to be buffered\n\n"
-"  --constraint={fixrate | ... } | -c {fixrate | ... }\n"
-"        Require the program to fail if the given options cannot be\n"
-"        honored. For the time being this is only the case for the\n"
-"        sampling rate\n\n"
-"  --plotters={number} | -N {number}\n"
-"        Number of plotters plotting the data\n\n"
-"  --min-prio={priority}\n"
+"  --show-spectrum[={bool}] | -U [{bool}]\n"
+"        Show the spectrum of the audio stream (default: yes);\n\n"
+"  --show-signal[={bool}] | -u [{bool}] \n"
+"        Show the signal of the audio stream (default: no);\n\n"
+"  --buffer-scale={factor} | -s {factor}\n"
+"        Provide the proportion between sampling buffer and read buffer\n"
+"        (default: 10);\n\n"
+"  --minprio={priority} | -m {priority}\n"
 "        Specify the realtime priority for the thread having the longest\n"
 "        sampling period (default 0, required a positive integer);\n\n"
+"  --run-for={time in seconds} | -r {time in seconds}\n"
+"        Requires the program to run for a certain amount of time.\n"
+"        By providing 0 (which is the default) the program will run\n"
+"        until interrupted\n\n"
 "  --help  | -h\n"
 "        Print this help.\n";
 
@@ -98,13 +117,19 @@ void notify_error (const char *progname, const char *fmt, ...)
     print_help(progname);
 }
 
+static
+int to_unsigned (const char *arg, unsigned *val)
+{
+    return sscanf(arg, "%u", val) == 1 ? 0 : -1;
+}
+
 static 
-int check_optarg (const char *arg, const char *allw[])
+int check_case_optarg (const char *arg, const char *allw[])
 {
     int id = 0;
 
     while (allw[id]) {
-        if (strcmp(allw[id], arg) == 0) {
+        if (strcasecmp(allw[id], arg) == 0) {
             return id;
         }
         id ++;
@@ -113,9 +138,26 @@ int check_optarg (const char *arg, const char *allw[])
 }
 
 static
-int to_unsigned (const char *arg, unsigned *val)
+int to_bool (const char *arg, bool *val)
 {
-    return sscanf(arg, "%u", val) == 1 ? 0 : -1;
+    const char *allowed_true[] = {
+        "yes", "y", "true", "t", "1", NULL
+    };
+    const char *allowed_false[] = {
+        "no", "n", "false", "f", "0", NULL
+    };
+
+    if (arg == NULL || check_case_optarg(arg, allowed_true) >= 0) {
+        *val = true;
+        return 0;
+    }
+
+    if (check_case_optarg(arg, allowed_false) >= 0) {
+        *val = false;
+        return 0;
+    }
+
+    return -1;
 }
 
 static
@@ -136,18 +178,20 @@ static
 void set_defaults (opts_t *so)
 {
     so->device = DEFAULT_DEVICE;
-    so->mode = STEREO;
     so->rate = DEFAULT_RATE;
     so->minprio = DEFAULT_MINPRIO;
-    so->nplot = DEFAULT_PLOTS_NUMBER;
-    so->policy = SAMP_ACCEPT_RATE;
+    so->show = SHOW_SPECTRUM;
+    so->buffer_scale = DEFAULT_BUFFER_SCALE;
+    so->run_for = DEFAULT_RUN_FOR;
 }
 
-extern char *optarg;
-
-int opts_parse (opts_t *so, int argc, char * const argv[])
+opts_t * opts_parse (int argc, char * const argv[])
 {
+    extern char *optarg;
     int opt;
+    bool b;
+
+    opts_t *so = calloc(1, sizeof(opts_t));
 
     set_defaults(so);
     while ((opt = getopt_long(argc, argv, optstring, longopts, NULL))
@@ -156,150 +200,109 @@ int opts_parse (opts_t *so, int argc, char * const argv[])
             case 'd':
                 so->device = optarg;
                 break;
-            case 'm':
-                switch (check_optarg(optarg, avail_mode)) {
-                    case 0:
-                        so->mode = MONO;
-                        break;
-                    case 1:
-                        so->mode = STEREO;
-                        break;
-                    default:
-                        notify_error(argv[0], "invalid mode: '%s'",
-                                     optarg);
-                        return -1;
-                }
-                break;
-            case 'N':
-                if (to_unsigned(optarg, (unsigned *)&so->nplot) == -1) {
-                    notify_error(argv[0],
-                                 "invalid number of plotters: '%s'",
-                                 optarg);
-                    return -1;
-                }
-                break;
             case 'r':
-                if (to_unsigned(optarg, &so->rate) == -1) {
+                if (to_unsigned(optarg, &so->rate)) {
                     notify_error(argv[0], "invalid rate: '%s'", optarg);
-                    return -1;
+                    return NULL;
                 }
                 break;
-            case 'B':
-                /*
-                if (to_unsigned(optarg,(unsigned *)&so->nsamp) == -1) {
-                    notify_error(argv[0],
-                                 "invalid buffered samples count: '%s'",
+            case 'U':
+                if (to_bool(optarg, &b)) {
+                    notify_error(argv[0], "cannot evaluate '%s' as bool",
                                  optarg);
-                    return -1;
+                    return NULL;
                 }
-                */
+                if (b) {
+                    so->show |= SHOW_SPECTRUM;
+                } else {
+                    so->show &= ~SHOW_SPECTRUM;
+                }
                 break;
-            case 'p':
+            case 'u':
+                if (to_bool(optarg, &b)) {
+                    notify_error(argv[0], "cannot evaluate '%s' as bool",
+                                 optarg);
+                    return NULL;
+                }
+                if (b) {
+                    so->show |= SHOW_SIGNAL;
+                } else {
+                    so->show &= ~SHOW_SIGNAL;
+                }
+                break;
+            case 's':
+                if (to_unsigned(optarg, &so->buffer_scale)) {
+                    notify_error(argv[0], "invalid scale: '%s'", optarg);
+                    return NULL;
+                }
+                break;
+            case 'm':
                 switch (to_priority(optarg, &so->minprio)) {
                     case -1:
                         notify_error(argv[0],
                                      "invalid min priority value: '%s'",
                                      optarg);
-                        return -1;
+                        return NULL;
                     case -2:
                         notify_error(argv[0], "min priority too high: %s",
                                      optarg);
-                        return -1;
+                        return NULL;
                 }
                 break;
-            case 'c':
-                if (check_optarg(optarg, avail_policy) == 0) {
-                    so->policy &= ~SAMP_ACCEPT_RATE;
+            case 't':
+                if (to_unsigned(optarg, &so->run_for)) {
+                    notify_error(argv[0], "invalid time of execution: '%s'", optarg);
+                    return NULL;
                 }
                 break;
             case 'h':
             case '?':
                 print_help(argv[0]);
-                return -1;
+                return NULL;
         }
     }
-    return 0;
+    if (so->show == SHOW_NOTHING) {
+        notify_error(argv[0], "What should I plot?");
+        return NULL;
+    }
+    return so;
 }
 
-/*
-
-   The remaining part of this file contains useful data for a possible
-   future expansion of the program, namely the valid options for the input
-   audio format. Only S16_LE is be supported for the moment.
-
-   Inb4: Yes, they have been extrapolated by regexes.
-
+/* Funny regex generated getters:
+   %s/\v^(.*)/opts_get_\1 (opts_t *o)\r{\r    return o->\1;\r}\r
  */
 
-#if 0
-
-static const char *avail_format[] = {
-    "UNKNOWN", "S8", "U8", "S16_LE", "S16_BE", "U16_LE", "U16_BE",
-    "S24_LE", "S24_BE", "U24_LE", "U24_BE", "S32_LE", "S32_BE", "U32_LE",
-    "U32_BE", "FLOAT_LE", "FLOAT_BE", "FLOAT64_LE", "FLOAT64_BE",
-    "IEC958_SUBFRAME_LE", "IEC958_SUBFRAME_BE", "MU_LAW", "A_LAW",
-    "IMA_ADPCM", "MPEG", "GSM", "SPECIAL", "S24_3LE", "S24_3BE",
-    "U24_3LE", "U24_3BE", "S20_3LE", "S20_3BE", "U20_3LE", "U20_3BE",
-    "S18_3LE", "S18_3BE", "U18_3LE", "U18_3BE", "S16", "U16", "S24",
-    "U24", "S32", "U32", "FLOAT", "FLOAT64", "IEC958_SUBFRAME", NULL
-};
-
-static
-int to_pcm_format (int index, snd_pcm_format_t *fmt)
+const char * opts_get_device (opts_t *o)
 {
-    switch (index) {
-        case  0: *fmt = SND_PCM_FORMAT_UNKNOWN;              break;
-        case  1: *fmt = SND_PCM_FORMAT_S8;                   break;
-        case  2: *fmt = SND_PCM_FORMAT_U8;                   break;
-        case  3: *fmt = SND_PCM_FORMAT_S16_LE;               break;
-        case  4: *fmt = SND_PCM_FORMAT_S16_BE;               break;
-        case  5: *fmt = SND_PCM_FORMAT_U16_LE;               break;
-        case  6: *fmt = SND_PCM_FORMAT_U16_BE;               break;
-        case  7: *fmt = SND_PCM_FORMAT_S24_LE;               break;
-        case  8: *fmt = SND_PCM_FORMAT_S24_BE;               break;
-        case  9: *fmt = SND_PCM_FORMAT_U24_LE;               break;
-        case 10: *fmt = SND_PCM_FORMAT_U24_BE;               break;
-        case 11: *fmt = SND_PCM_FORMAT_S32_LE;               break;
-        case 12: *fmt = SND_PCM_FORMAT_S32_BE;               break;
-        case 13: *fmt = SND_PCM_FORMAT_U32_LE;               break;
-        case 14: *fmt = SND_PCM_FORMAT_U32_BE;               break;
-        case 15: *fmt = SND_PCM_FORMAT_FLOAT_LE;             break;
-        case 16: *fmt = SND_PCM_FORMAT_FLOAT_BE;             break;
-        case 17: *fmt = SND_PCM_FORMAT_FLOAT64_LE;           break;
-        case 18: *fmt = SND_PCM_FORMAT_FLOAT64_BE;           break;
-        case 19: *fmt = SND_PCM_FORMAT_IEC958_SUBFRAME_LE;   break;
-        case 21: *fmt = SND_PCM_FORMAT_IEC958_SUBFRAME_BE;   break;
-        case 22: *fmt = SND_PCM_FORMAT_MU_LAW;               break;
-        case 23: *fmt = SND_PCM_FORMAT_A_LAW;                break;
-        case 24: *fmt = SND_PCM_FORMAT_IMA_ADPCM;            break;
-        case 25: *fmt = SND_PCM_FORMAT_MPEG;                 break;
-        case 26: *fmt = SND_PCM_FORMAT_GSM;                  break;
-        case 27: *fmt = SND_PCM_FORMAT_SPECIAL;              break;
-        case 28: *fmt = SND_PCM_FORMAT_S24_3LE;              break;
-        case 29: *fmt = SND_PCM_FORMAT_S24_3BE;              break;
-        case 31: *fmt = SND_PCM_FORMAT_U24_3LE;              break;
-        case 32: *fmt = SND_PCM_FORMAT_U24_3BE;              break;
-        case 33: *fmt = SND_PCM_FORMAT_S20_3LE;              break;
-        case 34: *fmt = SND_PCM_FORMAT_S20_3BE;              break;
-        case 35: *fmt = SND_PCM_FORMAT_U20_3LE;              break;
-        case 36: *fmt = SND_PCM_FORMAT_U20_3BE;              break;
-        case 37: *fmt = SND_PCM_FORMAT_S18_3LE;              break;
-        case 38: *fmt = SND_PCM_FORMAT_S18_3BE;              break;
-        case 39: *fmt = SND_PCM_FORMAT_U18_3LE;              break;
-        case 40: *fmt = SND_PCM_FORMAT_U18_3BE;              break;
-        case 41: *fmt = SND_PCM_FORMAT_S16;                  break;
-        case 42: *fmt = SND_PCM_FORMAT_U16;                  break;
-        case 43: *fmt = SND_PCM_FORMAT_S24;                  break;
-        case 44: *fmt = SND_PCM_FORMAT_U24;                  break;
-        case 45: *fmt = SND_PCM_FORMAT_S32;                  break;
-        case 46: *fmt = SND_PCM_FORMAT_U32;                  break;
-        case 47: *fmt = SND_PCM_FORMAT_FLOAT;                break;
-        case 48: *fmt = SND_PCM_FORMAT_FLOAT64;              break;
-        case 49: *fmt = SND_PCM_FORMAT_IEC958_SUBFRAME;      break;
-        default:
-            return -1;
-    }
-    return 0;
+    return o->device;
 }
-#endif
 
+unsigned opts_get_rate (opts_t *o)
+{
+    return o->rate;
+}
+
+unsigned opts_get_minprio (opts_t *o)
+{
+    return o->minprio;
+}
+
+unsigned opts_get_buffer_scale (opts_t *o)
+{
+    return o->buffer_scale;
+}
+
+bool opts_spectrum_shown (opts_t *o)
+{
+    return (o->show & SHOW_SPECTRUM) != 0;
+}
+
+bool opts_signal_shown (opts_t *o)
+{
+    return (o->show & SHOW_SIGNAL) != 0;
+}
+
+unsigned opts_get_run_for (opts_t *o)
+{
+    return o->run_for;    
+}

@@ -307,6 +307,7 @@ thrd_pool_t * thrd_new (unsigned minprio)
     thrd_pool_t *pool;
 
     pool = (thrd_pool_t *) calloc(1, sizeof(thrd_pool_t));
+    assert(pool);
     pool->minprio = minprio + sched_get_priority_min(SCHED_FIFO);
 
     return pool;

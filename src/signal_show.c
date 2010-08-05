@@ -28,7 +28,7 @@
 #include "headers/plotting.h"
 #include "headers/sampthread.h"
 
-struct showth_data {
+struct signth_data {
     samp_frame_t *buffer;
     snd_pcm_uframes_t buflen;
     genth_t *sampth;
@@ -39,7 +39,7 @@ struct showth_data {
 static
 int destroy_cb (void *arg)
 {
-    struct showth_data *ctx = (struct showth_data *)arg;
+    struct signth_data *ctx = (struct signth_data *)arg;
 
     free(ctx->buffer);
     free(arg);
@@ -51,7 +51,7 @@ static
 int thread_cb (void *arg)
 {
     unsigned i;
-    struct showth_data *ctx = (struct showth_data *)arg;
+    struct signth_data *ctx = (struct signth_data *)arg;
     samp_frame_t *buffer;
 
     buffer = ctx->buffer;
@@ -64,10 +64,10 @@ int thread_cb (void *arg)
     return 0;
 }
 
-int showth_subscribe (genth_t **handle, thrd_pool_t *pool,
+int signth_subscribe (genth_t **handle, thrd_pool_t *pool,
                       genth_t *sampth, plotgr_t *g0, plotgr_t *g1)
 {
-    struct showth_data *ctx;
+    struct signth_data *ctx;
     thrd_info_t thi;
     int err;
 
@@ -75,7 +75,7 @@ int showth_subscribe (genth_t **handle, thrd_pool_t *pool,
     thi.callback = thread_cb;
     thi.destroy = destroy_cb;
 
-    ctx = (struct showth_data *) calloc(1, sizeof(struct showth_data));
+    ctx = (struct signth_data *) calloc(1, sizeof(struct signth_data));
     assert(ctx);
     thi.context = (void *) ctx;
 

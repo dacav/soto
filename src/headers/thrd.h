@@ -99,6 +99,7 @@ typedef enum {
  *
  * @param minprio A positive priority offset over
  *                sched_get_priority_min().
+ *
  * @return The newly allocated pool.
  */
 thrd_pool_t * thrd_new (unsigned minprio);

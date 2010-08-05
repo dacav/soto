@@ -87,14 +87,17 @@ extern "C" {
 /** Default device used in the options module. */
 #define DEFAULT_DEVICE          "hw:0,0"
 
+/** Default proportion between sampling buffer and read buffer */
+#define DEFAULT_BUFFER_SCALE    1000
+
+/** Default time of execution for the buffer */
+#define DEFAULT_RUN_FOR         0
+
 /** Default minimum priority used in the options module
  *
  * @see opts_t::minprio.
  */
 #define DEFAULT_MINPRIO         0
-
-/** Default number of plotting windows. */
-#define DEFAULT_PLOTS_NUMBER     1
 
 #ifdef __cplusplus
 }

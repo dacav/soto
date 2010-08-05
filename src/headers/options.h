@@ -31,50 +31,92 @@ extern "C" {
 #endif
 
 #include "headers/alsagw.h"
-
-#include <alsa/asoundlib.h>
 #include <dacav/dacav.h>
+#include <stdbool.h>
 
-#include <stdint.h>
-#include <time.h>
-
-/** Option keeping structure.
- *
- * @note The field opts_t::minpio will be added to the value returned by
- *       the sched_get_priority_min() system call.
- */
-typedef struct {
-
-    /* ALSA related options */
-
-    const char *device;         /**< PCM device */
-
-    enum {
-        MONO,                   /**< One channel */
-        STEREO                  /**< Two channels */
-    } mode;                     /**< Number of input channels */
-
-    unsigned rate;              /**< Sample rate; */
-    size_t nplot;               /**< Number of plotters; */
-    
-    /** Defines the policy of the initialization, @see samp_policy_t */
-    samp_policy_t policy;
-
-    /** Minimum priority value to be used. This will be added to the
-     *  result of the sched_get_priority_min() syscall.
-     */
-    int minprio;
-
-} opts_t;
+/** Option opaque type. */
+typedef struct opts opts_t;
 
 /** Parse the command line options
  *
- * @param opts The structure holding the options;
+ * @note This function is supposed to work as interface with the shell,
+ *       therefore errors are directly shown on stderr.
+ *
  * @param argc Main's argument counter;
- * @param argv Main's argument vector;
- * @return 0 on success, non-zero on fail.
+ * @param argv Main's argument vector.
+ *
+ * @return the options set on success, NULL on failure.
  */
-int opts_parse (opts_t *opts, int argc, char * const argv[]);
+opts_t * opts_parse (int argc, char * const argv[]);
+
+/** Destructor of options.
+ *
+ * @param o The options set to be destroyed.
+ *
+ */
+static inline
+void opts_destroy (opts_t *o)
+{
+    free(o);
+}
+
+/** Getter for the audio device.
+ *
+ * @param o The options set.
+ * @return The audio device.
+ */
+const char * opts_get_device (opts_t *o);
+
+/** Getter for the sampling rate.
+ *
+ * @param o The options set;
+ * @return The sampling rate.
+ */
+unsigned opts_get_rate (opts_t *o);
+
+/** Getter for the minimum priority.
+ *
+ * @param o The options set;
+ * @return The minimum priority.
+ */
+unsigned opts_get_minprio (opts_t *o);
+
+/** Getter for the execution time.
+ *
+ * Execution time is the actual duration, in seconds, of the
+ * sampling/plotting phase.
+ *
+ * @param o The options set;
+ * @return The execution time.
+ */
+unsigned opts_get_run_for (opts_t *o);
+
+/** Show the spectrum predicate. 
+ *
+ * @param o The options set.
+ * @retval true If the program must show the spectrum.
+ * @retval false If the program must not show the spectrum.
+ */
+bool opts_spectrum_shown (opts_t *o);
+
+/** Show the signal predicate. 
+ *
+ * @param o The options set.
+ * @retval true If the program must show the spectrum.
+ * @retval false If the program must not show the spectrum.
+ */
+bool opts_signal_shown (opts_t *o);
+
+/** Getter for the buffer scale.
+ *
+ * Buffer scale is a multiplicative factor that defines the proportion
+ * between the alsa-defined sampling buffer size and the buffer where the
+ * samples shall be stored.
+ *
+ * @param o The options set
+ * @return The buffer scale
+ */
+unsigned opts_get_buffer_scale (opts_t *o);
 
 #ifdef __cplusplus
 }

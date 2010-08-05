@@ -72,11 +72,11 @@ extern "C" {
 
 /** Error logging macro for a simple string. */
 #define ERR_MSG(str) \
-        fprintf(stderr, "[%08X] " str "\n", (unsigned) pthread_self())
+        fprintf(stderr, "[%08X] ERROR: " str "\n", (unsigned) pthread_self())
 
 /** Error logging macro for a printf-like formt. */
 #define ERR_FMT(fmt, ...) \
-        fprintf(stderr, "[%08X] " fmt "\n", (unsigned) pthread_self(), __VA_ARGS__)
+        fprintf(stderr, "[%08X] ERROR: " fmt "\n", (unsigned) pthread_self(), __VA_ARGS__)
 
 /** Logging macro for a simple string. */
 #define LOG_MSG(str) \

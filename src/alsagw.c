@@ -36,7 +36,7 @@ struct samp {
 };
 
 static
-int init_soundcard (snd_pcm_t *handle, unsigned *rate, uint8_t channels,
+int init_soundcard (snd_pcm_t *handle, unsigned *rate,
                     snd_pcm_uframes_t *nframes, unsigned *period)
 {
     snd_pcm_hw_params_t *hwparams;
@@ -58,8 +58,10 @@ int init_soundcard (snd_pcm_t *handle, unsigned *rate, uint8_t channels,
                                        SND_PCM_FORMAT_S16_LE);
     if (err < 0) return err;
 
+    /*
     err = snd_pcm_hw_params_set_channels(handle, hwparams, channels);
     if (err < 0) return err;
+    */
 
     err = snd_pcm_hw_params(handle, hwparams);
     if (err < 0) return err;
@@ -88,8 +90,7 @@ unsigned samp_get_rate (const samp_t *samp)
     return samp->rate;
 }
 
-samp_t * samp_new (const char *device, unsigned rate,
-                   uint8_t channels, int *err)
+samp_t * samp_new (const char *device, unsigned rate, int *err)
 {
     samp_t *s;
     snd_pcm_uframes_t nframes;
@@ -97,16 +98,13 @@ samp_t * samp_new (const char *device, unsigned rate,
     snd_pcm_t *pcm;
     int e;
     
-    assert(channels == 1 || channels == 2);
-
     if ((e = snd_pcm_open(&pcm, device, SND_PCM_STREAM_CAPTURE,
                           SND_PCM_NONBLOCK) != 0)) {
         *err = e;
         return NULL;
     }
 
-    if ((e = init_soundcard(pcm, &rate, channels, &nframes,
-                            &period)) != 0) {
+    if ((e = init_soundcard(pcm, &rate, &nframes, &period)) != 0) {
         *err = e;
         return NULL;
     }

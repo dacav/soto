@@ -61,8 +61,7 @@ typedef struct {
  * @return The newly allocated sampler.
  * @retval NULL if something went wrong (in which case check err).
  */
-samp_t * samp_new (const char *device, unsigned rate,
-                   uint8_t channels, int *err);
+samp_t * samp_new (const char *device, unsigned rate, int *err);
 
 /** Getter for the computed period.
  *

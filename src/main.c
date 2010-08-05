@@ -23,10 +23,10 @@
 #include <unistd.h>
 #include <sched.h>
 #include <assert.h>
+#include <signal.h>
+#include <sys/types.h>
 
 #include <dacav/dacav.h>
-
-#include <alsa/asoundlib.h>
 
 #include "headers/config.h"
 #include "headers/alsagw.h"
@@ -37,85 +37,151 @@
 #include "headers/plotthread.h"
 #include "headers/signal_show.h"
 #include "headers/spectrum_show.h"
+#include "headers/options.h"
+
+struct main_data {
+    opts_t *opts;
+    thrd_pool_t *pool;
+    samp_t *sampler;
+
+    plot_t *spectrum;
+    plot_t *signal;
+
+    /* This list is used as stack: it will contain all threads handlers in
+     * inverse-order of deallocation, thus by pop-ing elements I obtain
+     * the correct deallocation order. */
+    dlist_t *threads;
+};
+
+static
+void exit_handler (int xval, void *context)
+{
+    struct main_data *data = (struct main_data *)context;
+    unsigned long long dmiss;
+
+    DEBUG_FMT("Exiting on %s", xval == EXIT_SUCCESS ?
+                               "success" : "failure");
+
+    if (data->opts) opts_destroy(data->opts);
+
+    LOG_MSG("Sending kill to all threads...");
+    while (!dlist_empty(data->threads)) {
+        genth_t *handle;
+
+        data->threads = dlist_pop(data->threads, (void **)&handle);
+        genth_sendkill(handle);
+    }
+    LOG_MSG("Waiting until they're dead (if you just closed the window");
+    LOG_MSG("you've better to kill the program explicitly).");
+    if (data->pool) {
+        thrd_destroy(data->pool, &dmiss);
+        LOG_FMT("The pool registred %llu deadline misses", dmiss);
+    }
+    if (data->sampler) samp_destroy(data->sampler);
+    if (data->spectrum) plot_destroy(data->spectrum);
+    if (data->signal) plot_destroy(data->signal);
+
+    LOG_MSG("Goodbye");
+}
+
+static
+void sigterm_handler (int sig)
+{
+    exit(EXIT_FAILURE);
+}
 
 int main (int argc, char **argv)
 {
-    samp_t *samp;
+    struct main_data data;
     genth_t *sampth;
-    thrd_pool_t *pool;
-    plot_t *plot, *sigplot;
-    genth_t *plotth, *sigplotth;
-    genth_t *showth, *sigshowth;
-    specth_graphics_t spec_graphs;
-    long long unsigned miss;
     int err;
+    unsigned run_for;
 
-    pool = thrd_new(0);
-    samp = samp_new("hw:0,0", 44100, 2, &err);
-    if (samp == NULL) {
-        LOG_FMT("Building samp: %s\n", snd_strerror(err));
-    }
+    signal(SIGINT, sigterm_handler);
+    signal(SIGTERM, sigterm_handler);
 
-    if (sampth_subscribe(&sampth, pool, samp, 10)) {
-        thrd_err_t err = thrd_interr(pool);
-        LOG_FMT("Unable to startup: %s", thrd_strerr(pool, err));
+    memset(&data, 0, sizeof(struct main_data));
+    data.threads = dlist_new();
+
+    if ((data.opts = opts_parse(argc, argv)) == NULL) {
         exit(EXIT_FAILURE);
     }
 
-    plot = plot_new(4, sampth_get_size(sampth));
-    if (plotth_subscribe(&plotth, pool, plot)) {
-        thrd_err_t err = thrd_interr(pool);
-        LOG_FMT("Unable to start plotting thread 1: %s",
-                thrd_strerr(pool, err));
-        exit(EXIT_FAILURE);
-    }
-    sigplot = plot_new(2, sampth_get_size(sampth));
-    if (plotth_subscribe(&sigplotth, pool, sigplot)) {
-        thrd_err_t err = thrd_interr(pool);
-        LOG_FMT("Unable to start plotting thread 1: %s",
-                thrd_strerr(pool, err));
-        exit(EXIT_FAILURE);
-    }
- 
-    spec_graphs.r0 = plot_new_graphic(plot);
-    spec_graphs.i0 = plot_new_graphic(plot);
-    spec_graphs.r1 = plot_new_graphic(plot);
-    spec_graphs.i1 = plot_new_graphic(plot);
-    if (specth_subscribe(&showth, pool, sampth,
-                         &spec_graphs)) {
-        LOG_FMT("Unable to start spectrum plotter: %s",
-                thrd_strerr(pool, thrd_interr(pool)));
+    on_exit(exit_handler, (void *) &data);
+
+    data.pool = thrd_new(opts_get_minprio(data.opts));
+    data.sampler = samp_new(opts_get_device(data.opts),
+                            opts_get_rate(data.opts),
+                            &err);
+    if (data.sampler == NULL) {
+        ERR_FMT("Unable to start Alsa: %s", snd_strerror(err));
         exit(EXIT_FAILURE);
     }
 
-    if (showth_subscribe(&sigshowth, pool, sampth,
-                         plot_new_graphic(sigplot),
-                         plot_new_graphic(sigplot))) {
-        LOG_FMT("Unable to start signal plotter: %s",
-                thrd_strerr(pool, thrd_interr(pool)));
+    if (sampth_subscribe(&sampth, data.pool, data.sampler,
+                         opts_get_buffer_scale(data.opts))) {
+        ERR_FMT("Unable to start Sampler: %s",
+                thrd_strerr(data.pool, thrd_interr(data.pool)));
+        exit(EXIT_FAILURE);
+    }
+    data.threads = dlist_push(data.threads, sampth);
+
+    DEBUG_FMT("Samp-size: %i\n", (int)sampth_get_size(sampth));
+
+    if (opts_spectrum_shown(data.opts)) {
+        genth_t *handle;
+        specth_graphics_t spec_graphs;
+
+        data.spectrum = plot_new(4, sampth_get_size(sampth));
+        if (plotth_subscribe(&handle, data.pool, data.spectrum)) {
+            ERR_FMT("Unable to start Spectrum Plotter: %s",
+                    thrd_strerr(data.pool, thrd_interr(data.pool)));
+            exit(EXIT_FAILURE);
+        }
+        data.threads = dlist_push(data.threads, handle);
+
+        spec_graphs.r0 = plot_new_graphic(data.spectrum);
+        spec_graphs.i0 = plot_new_graphic(data.spectrum);
+        spec_graphs.r1 = plot_new_graphic(data.spectrum);
+        spec_graphs.i1 = plot_new_graphic(data.spectrum);
+        if (specth_subscribe(&handle, data.pool, sampth, &spec_graphs)) {
+            ERR_FMT("Unable to start Spectrum Analizer: %s",
+                    thrd_strerr(data.pool, thrd_interr(data.pool)));
+            exit(EXIT_FAILURE);
+        }
+        data.threads = dlist_push(data.threads, handle);
+    }
+
+    if (opts_signal_shown(data.opts)) {
+        genth_t *handle;
+
+        data.signal = plot_new(2, sampth_get_size(sampth));
+        if (plotth_subscribe(&handle, data.pool, data.signal)) {
+            ERR_FMT("Unable to start Signal Plotter: %s",
+                    thrd_strerr(data.pool, thrd_interr(data.pool)));
+            exit(EXIT_FAILURE);
+        }
+        data.threads = dlist_push(data.threads, handle);
+
+        if (signth_subscribe(&handle, data.pool, sampth,
+                             plot_new_graphic(data.signal),
+                             plot_new_graphic(data.signal))) {
+            ERR_FMT("Unable to start Signal Analyzer: %s",
+                    thrd_strerr(data.pool, thrd_interr(data.pool)));
+            exit(EXIT_FAILURE);
+        }
+        data.threads = dlist_push(data.threads, handle);
+    }
+
+    if (thrd_start(data.pool)) {
+        ERR_FMT("Unable to start Signal Analyzer: %s",
+                thrd_strerr(data.pool, thrd_interr(data.pool)));
         exit(EXIT_FAILURE);
     }
 
-    if (thrd_start(pool)) {
-        thrd_err_t err = thrd_interr(pool);
-        LOG_FMT("Unable to startup: %s", thrd_strerr(pool, err));
-        exit(EXIT_FAILURE);
-    }
-
-    sleep(100);
-
-    genth_sendkill(plotth);
-    genth_sendkill(sigplotth);
-    genth_sendkill(sigshowth);
-    genth_sendkill(showth);
-    genth_sendkill(sampth);
-
-    plot_destroy(plot);
-    samp_destroy(samp);
-    thrd_destroy(pool, &miss);
-
-    LOG_MSG("EVERYTHING WORKED CORRECTLY, SHUTTING DOWN");
-    LOG_FMT("We had %llu deadline misses", miss);
+    run_for = opts_get_run_for(data.opts);
+    if (run_for) sleep(opts_get_run_for(data.opts));
+    else pause();
 
     exit(EXIT_SUCCESS);
 }
