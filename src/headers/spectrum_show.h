@@ -18,7 +18,7 @@
  *
  */
 
-/** @file signal_show.h
+/** @file spectrum_show.h
  *
  * This module provieds the subscription through genthrd of a
  * thread in charge of displaying the raw data.

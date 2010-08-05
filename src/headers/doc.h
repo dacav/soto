@@ -10,61 +10,49 @@
 
 @section CompileInstall Compilation and installation
 
-     This software uses the GNU Autotools build system: in order to
-     compile and install the application the standard installation
-     method must be used:
+    This software uses the GNU Autotools build system: in order to
+    compile and install the application the standard installation
+    method must be used:
 @verbatim
 ./configure
 make
 make install
 @endverbatim
 
-     More information is provided by the INSTALL file, which is
-     included in the software package.
+    More information is provided by the INSTALL file, which is
+    included in the software package.
 
 @section License
 
-     Soto is free software: you can redistribute it and/or modify it
-     under the terms of the GNU General Public License as published by
-     the Free Software Foundation, either version 3 of the License, or
-     (at your option) any later version.
+    Soto is free software: you can redistribute it and/or modify it
+    under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
 
-     A copy of the GNU General Public License is provided along with
-     Soto: see the COPYING file.
+    A copy of the GNU General Public License is provided along with
+    Soto: see the COPYING file.
 
 @section Dependency 
 
-     In order to compile and run Soto you must satisfy the following
-     dependencies:
+    In order to compile and run Soto you must satisfy the following
+    dependencies:
 
-     \arg Alsa Soundlib (v. 1.0.20-3);
-     \arg GNU Plotutils libplot (v. 2.5-4);
-     \arg LibDacav (v. 0.4.2);
+    \arg Alsa Soundlib (v. 1.0.20-3);
+    \arg GNU Plotutils libplot (v. 2.5-4);
+    \arg LibDacav (v. 0.4.2);
 
-*/
+@section About this manual
 
-/** @defgroup AlsaGw Alsa Interface
+    You may read this text on both the html reference and the report
+    attached to the project: it's basically generated through doxygen from
+    the same source.
 
-  This module hides Alsa's weird bogus under a hood, providing a simple
-  initialization / finalization / reading interface.
+    This manual shows the basic principles behind the application. The
+    following modules will be discussed:
 
-  The samp_new() function allocates a new sampler and allows to provide
-  some parameters for the underlying library (namely Alsa ASoundLib.
-
-  In order to read data from Alsa, the samp_read() function can be
-  invoked. Since the module initializes Alsa in a non-locking way, in
-  principle this function will return immediately. Sometimes however the
-  data may be not available. In those cases the user can specify a maximum
-  amount of time to spend waiting for the resource to be available. Note
-  that this feature is provided directly by Alsa through the
-  snd_pcm_wait() function: this is probably implemented with some
-  asynchronous calls.
-
-  Other functions provided by this module allow to obtain additional
-  information which can be used to correctly tune other modules.
-
-  The samp_destroy() function can be eventually used to release
-  resources.
+    @arg @ref Thrd;
+    @arg @ref GenThrd;
+    @arg @ref Business;
 
 */
 
@@ -125,7 +113,8 @@ make install
     @arg The worst case execution time of "Start" should be lesser than
          the thread startup delay, thus this callback should run only the
          initialization code which is strictly required to be executed by
-         the thread.
+         the thread (like, by example, obtaining the thread id by calling
+         the pthread_self() function).
         
     @arg The worst case execution time of "Business" should be lesser than
          the period.
@@ -143,16 +132,16 @@ make install
     all the running thread to be terminated and achieves the cleaning up.
 
     An elegant solution to this problem is provided by the
-    \ref GenThrd module.
+    @ref GenThrd module.
 
 */
 
 /** @defgroup GenThrd Generic Threads
 
-  The \ref Thrd module provides a nice structure which hides the
+  The @ref Thrd module provides a nice structure which hides the
   mechanisms allowing a Real-time execution policy, however a drawback
   is soon becoming clear to the fearless programmer who uses it: the
-  \ref Thrd_Callbacks "return value based shutdown mechanism" is weak.
+  @ref Thrd_Callbacks "return value based shutdown mechanism" is weak.
 
   Initially my mind was gazing at a Posix-signal oriented mechanism, which
   would have provided a way to gently ask the thread to die. Unfortunately
@@ -161,14 +150,83 @@ make install
   all threads&rdquo;. Besides, who need signal when there's the
   pthread_cancel() call does exactly what we need? We just need to deal
   with cancellation points. Unfortunately the developer is forced to do
-  this in all modules!
+  this in all modules! Once realized that this can be generalized, I had
+  enough cases to make allowance for this module to be written.
 
-  Once realized that this can be generalized, I had enough cases to make
-  allowance for this module to be written.
+  The Generic Threads module acts like a wrapper for this mechanism: the
+  thread subscription requires as parameter a Threading Pool object and
+  the same thread specification structure used by the @ref Thrd module
+  (namely thrd_info_t). It subscribes a private initialization function
+  and uses it to retrieve the thread identifier before calling the "Start"
+  function provided by the user. The thread identifier and other useful
+  metadata will extend the context provided by the user; everything is
+  associated to a handle.
 
-         Other parts may be executed con the user context
-         before subscribing the thread; + standard thread init operation,
-         handle for kill
-         --->
+  @section GenThrd_Termination Generic Thread Termination
+
+    Through the handle of a Generic Thread, the developer can ask the
+    thread to terminate. Internally this is achieved by calling the
+    pthread_destroy() system call.
+
+    The module ensures a correct process termination by disabling the
+    cancellation of the thread inside its private extension of the
+    initialization function. Cancellation requests are checked once per
+    period; if needed the generic thread takes care of executing the user's
+    "Finish" procedure. This is achieved by using the
+    pthread_cleanup_push() and pthread_cleanup_pop() functions.
+
+  @section GenThrd_Context Private Thread Management
+
+
+  @section GenThrd_Drawback Drawbacks
+
+    @subsection GenThrd_Drawback_TypeSafety Type safety
+
+        You may have noticed that this system is somehow similar to the
+        inheritance mechanism of object oriented languages: each module
+        using Generic Threads works somehow as it is a class extending
+        Generic Thread.
+        
+        Unfortunately C++'s <em>virtual</em> keyword is not available to
+        this mechanism, hence the toughtless programmer may call functions
+        provided by a module on the handler obtained by another module.
+        This shall certainly bring to memory corruption.
 
 */
+
+/** @defgroup Business Business Logic of the Program */
+
+/*@{*/
+
+/** @defgroup AlsaGw Alsa Gateway 
+
+  This module hides Alsa's weird bogus under a hood, providing a simple
+  initialization / finalization / reading interface.
+
+  The samp_new() function allocates a new sampler and allows to provide
+  some parameters for the underlying library (namely Alsa ASoundLib.
+
+  In order to read data from Alsa, the samp_read() function can be
+  invoked. Since the module initializes Alsa in a non-locking way, in
+  principle this function will return immediately. Sometimes however the
+  data may be not available. In those cases the user can specify a maximum
+  amount of time to spend waiting for the resource to be available. Note
+  that this feature is provided directly by Alsa through the
+  snd_pcm_wait() function: this is probably implemented with some
+  asynchronous calls.
+
+  Other functions provided by this module allow to obtain additional
+  information which can be used to correctly tune other modules.
+
+  The samp_destroy() function can be eventually used to release
+  resources.
+
+*/
+
+/** @defgroup Options Command line options */
+/** @defgroup Sampling Sampling Thread */
+/** @defgroup Plotting Plotting Thread */
+/** @defgroup Signal Showing the Signal */
+/** @defgroup Spectrum Showing the Spectrum */
+
+/*@}*/
