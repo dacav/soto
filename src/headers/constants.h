@@ -31,69 +31,68 @@ extern "C" {
 
 #include <stdint.h>
 
-/** Number of seconds per nanoseconds. */
+/** @brief Number of seconds per nanoseconds. */
 #define SECOND_NS               1000000000UL
 
-/** Startup delay for sampling thread, seconds. */
+/** @brief Startup delay for sampling thread, seconds. */
 #define SAMP_STARTUP_DELAY_SEC  0
 
-/** Startup delay for sampling thread, nanoseconds. */
+/** @brief Startup delay for sampling thread, nanoseconds. */
 #define SAMP_STARTUP_DELAY_nSEC 500000
 
-/** Period for direct plotting thread, seconds. */
+/** @brief Period for direct plotting thread, seconds. */
 #define PLOT_PERIOD_SEC        0
 
-/** Period for direct plotting thread, nanoseconds.
+/** @brief Period for direct plotting thread, nanoseconds.
  *
  * This value corresponds to 1.0 sec / 28, namely a suitable frequency for
  * the human eye to notice the plot updating.
  */
-//#define PLOT_PERIOD_nSEC        35714286     
 #define PLOT_PERIOD_nSEC        35714286     
 
-/** Proportion divisor between sampling thread period and sampling wait in
+/** @brief Proportion divisor between sampling thread period and sampling wait in
  * case of failure. This will be multiplied by period in sampthread.c.
  */
 #define ALSA_WAIT_PROPORTION    2
 
-/** Size of the graphical window used for plotting. */
+/** @brief Size of the graphical window used for plotting. */
 #define PLOT_BITMAPSIZE         "400x250"
 
-/** Color of the plotting line. */
+/** @brief Color of the plotting line. */
 #define PLOT_LINECOLOR          "green"
 
-/** Color of the plotting background. */
+/** @brief Color of the plotting background. */
 #define PLOT_BGCOLOR            "black"
 
-/** Minimum plotable value. */
+/** @brief Minimum plotable value. */
 #define PLOT_MIN_Y              INT16_MAX
 
-/** Maximum plotable value. */
+/** @brief Maximum plotable value. */
 #define PLOT_MAX_Y              INT16_MIN
 
-/** Multiplication factor (signal_show.c).
+/** @brief Multiplication factor (signal_show.c).
  *
  * The period of the plotter will be a multiple of the sampling period
  * w.r.t. this constant.
  */
 #define PLOT_PERIOD_TIMES       10
 
-/** Number of sampling used in averaging samples. */
+/** @brief Number of sampling used in averaging samples. */
 #define PLOT_AVERAGE_LEN        50
 
-/** Default rate used in the options module. */
+/** @brief Default rate used in the options module. */
 #define DEFAULT_RATE            44100
 
-/** Default device used in the options module. */
+/** @brief Default device used in the options module. */
 #define DEFAULT_DEVICE          "hw:0,0"
 
-/** Default proportion between sampling buffer and read buffer */
+/** @brief Default proportion between sampling buffer and read buffer */
 #define DEFAULT_BUFFER_SCALE    1000
 
-/** Default time of execution for the buffer */
+/** @brief Default time of execution for the buffer */
 #define DEFAULT_RUN_FOR         0
 
-/** Default minimum priority used in the options module
+/** @brief Default minimum priority used in the options module
  *
  * @see opts_t::minprio.
  */

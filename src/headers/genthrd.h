@@ -32,10 +32,10 @@ extern "C" {
 
 #include "headers/thrd.h"
 
-/** Opaque type for generic thread handle. */
+/** @brief Opaque type for generic thread handle. */
 typedef struct genth_data genth_t;
 
-/** Subscribe a generic thread to the given pool.
+/** @brief Subscribe a generic thread to the given pool.
  *
  * @param handle Thea address of a pointer where the generic thread
  *               handle address will be stored;
@@ -50,7 +50,7 @@ typedef struct genth_data genth_t;
 int genth_subscribe (genth_t **handle, thrd_pool_t *pool,
                      const thrd_info_t *info);
 
-/** Request thread termination.
+/** @brief Request thread termination.
  *
  * This call terminates the running thread.
  *
@@ -61,7 +61,7 @@ int genth_subscribe (genth_t **handle, thrd_pool_t *pool,
  */
 int genth_sendkill (genth_t *handle);
 
-/** Getter for the user context of the thread
+/** @brief Getter for the user context of the thread
  *
  * @param handle The handle of the thread.
  *

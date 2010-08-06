@@ -40,15 +40,15 @@ extern "C" {
 
 #ifdef DEBUG_ENABLED
 
-/** Debugging macro for a simple string. */
+/** @brief Debugging macro for a simple string. */
 #define DEBUG_MSG(str) \
         fprintf(stderr, "[%08X] " str "\n", (unsigned) pthread_self())
 
-/** Debugging macro for a printf-like formt. */
+/** @brief Debugging macro for a printf-like formt. */
 #define DEBUG_FMT(fmt, ...) \
         fprintf(stderr, "[%08X] " fmt "\n", (unsigned) pthread_self(), __VA_ARGS__)
 
-/** Debugging macro for struct timespec. */
+/** @brief Debugging macro for struct timespec. */
 #define DEBUG_TIMESPEC(str, remain)                                 \
     do if ((remain).tv_sec != 0 || (remain).tv_nsec != 0) {         \
         fprintf(stderr, "[%08X] " str " [sec=%u, nsec=%lu]\n",      \
@@ -59,30 +59,30 @@ extern "C" {
 
 #else
 
-/** Debugging macro for a simple string. */
+/** @brief Debugging macro for a simple string. */
 #define DEBUG_MSG(str)
 
-/** Debugging macro for a printf-like formt. */
+/** @brief Debugging macro for a printf-like formt. */
 #define DEBUG_FMT(fmt, ...)
 
-/** Debugging macro for struct timespec. */
+/** @brief Debugging macro for struct timespec. */
 #define DEBUG_TIMESPEC(str, remain)
 
 #endif
 
-/** Error logging macro for a simple string. */
+/** @brief Error logging macro for a simple string. */
 #define ERR_MSG(str) \
         fprintf(stderr, "[%08X] ERROR: " str "\n", (unsigned) pthread_self())
 
-/** Error logging macro for a printf-like formt. */
+/** @brief Error logging macro for a printf-like formt. */
 #define ERR_FMT(fmt, ...) \
         fprintf(stderr, "[%08X] ERROR: " fmt "\n", (unsigned) pthread_self(), __VA_ARGS__)
 
-/** Logging macro for a simple string. */
+/** @brief Logging macro for a simple string. */
 #define LOG_MSG(str) \
         fprintf(stdout, "[%08X] " str "\n", (unsigned) pthread_self())
 
-/** Logging macro for a printf-like formt. */
+/** @brief Logging macro for a printf-like formt. */
 #define LOG_FMT(fmt, ...) \
         fprintf(stdout, "[%08X] " fmt "\n", (unsigned) pthread_self(), __VA_ARGS__)
 

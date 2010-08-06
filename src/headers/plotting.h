@@ -36,13 +36,13 @@ extern "C" {
 #include <plot.h>
 #include <stdint.h>
 
-/** Plotter opaque type. */
+/** @brief Plotter opaque type. */
 typedef struct plot plot_t;
 
-/** Plotter graphic opaque type */
+/** @brief Plotter graphic opaque type */
 typedef struct graphic plotgr_t;
 
-/** Plotter constructor.
+/** @brief Plotter constructor.
  *
  * @note This function spawns a X11 window on which the plot will be displayed.
  *
@@ -53,7 +53,7 @@ typedef struct graphic plotgr_t;
  */
 plot_t * plot_new (size_t n, unsigned max_x);
 
-/** Add a new graphic.
+/** @brief Add a new graphic.
  *
  * @param p The plotter.
  *
@@ -62,7 +62,7 @@ plot_t * plot_new (size_t n, unsigned max_x);
  */
 plotgr_t * plot_new_graphic (plot_t *p);
 
-/** Write a value on a graphic.
+/** @brief Write a value on a graphic.
  *
  * In order to visualize modification plot_redraw() must be called.
  *
@@ -75,13 +75,13 @@ plotgr_t * plot_new_graphic (plot_t *p);
  */
 void plot_graphic_set (plotgr_t *g, unsigned pos, int16_t val);
 
-/** Update the window by redrawing.
+/** @brief Update the window by redrawing.
  *
  * @param p The plot to be redrawn.
  */
 void plot_redraw(plot_t *p);
 
-/** Plotter Destructor
+/** @brief Plotter Destructor
  *
  * @param p The plotter to be destroyed.
  */

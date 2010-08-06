@@ -34,10 +34,10 @@ extern "C" {
 #include <dacav/dacav.h>
 #include <stdbool.h>
 
-/** Option opaque type. */
+/** @brief Option opaque type. */
 typedef struct opts opts_t;
 
-/** Parse the command line options
+/** @brief Parse the command line options
  *
  * @note This function is supposed to work as interface with the shell,
  *       therefore errors are directly shown on stderr.
@@ -49,7 +49,7 @@ typedef struct opts opts_t;
  */
 opts_t * opts_parse (int argc, char * const argv[]);
 
-/** Destructor of options.
+/** @brief Destructor of options.
  *
  * @param o The options set to be destroyed.
  *
@@ -60,28 +60,28 @@ void opts_destroy (opts_t *o)
     free(o);
 }
 
-/** Getter for the audio device.
+/** @brief Getter for the audio device.
  *
  * @param o The options set.
  * @return The audio device.
  */
 const char * opts_get_device (opts_t *o);
 
-/** Getter for the sampling rate.
+/** @brief Getter for the sampling rate.
  *
  * @param o The options set;
  * @return The sampling rate.
  */
 unsigned opts_get_rate (opts_t *o);
 
-/** Getter for the minimum priority.
+/** @brief Getter for the minimum priority.
  *
  * @param o The options set;
  * @return The minimum priority.
  */
 unsigned opts_get_minprio (opts_t *o);
 
-/** Getter for the execution time.
+/** @brief Getter for the execution time.
  *
  * Execution time is the actual duration, in seconds, of the
  * sampling/plotting phase.
@@ -91,7 +91,7 @@ unsigned opts_get_minprio (opts_t *o);
  */
 unsigned opts_get_run_for (opts_t *o);
 
-/** Show the spectrum predicate. 
+/** @brief Show the spectrum predicate. 
  *
  * @param o The options set.
  * @retval true If the program must show the spectrum.
@@ -99,7 +99,7 @@ unsigned opts_get_run_for (opts_t *o);
  */
 bool opts_spectrum_shown (opts_t *o);
 
-/** Show the signal predicate. 
+/** @brief Show the signal predicate. 
  *
  * @param o The options set.
  * @retval true If the program must show the spectrum.
@@ -107,7 +107,7 @@ bool opts_spectrum_shown (opts_t *o);
  */
 bool opts_signal_shown (opts_t *o);
 
-/** Getter for the buffer scale.
+/** @brief Getter for the buffer scale.
  *
  * Buffer scale is a multiplicative factor that defines the proportion
  * between the alsa-defined sampling buffer size and the buffer where the

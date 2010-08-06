@@ -1,12 +1,12 @@
-/** @file doc.h Documentation header file */
+/** @file doc.h Documentation header file 
 
-/** @mainpage Soto - Project for RTOS.
+@mainpage Soto - Project for RTOS.
 
-  The SOTO project is focused on a correct, well designed and well
-  documented real-time application which reads data from the (in)famous
-  Alsa asoundlib.  This manual provides both a reference from the user
-  prospective and a technical reference describing how the system works
-  internally.
+    The SOTO project is focused on a correct, well designed and well
+    documented real-time application which reads data from the microphone
+    by using Alsa asoundlib.  This manual provides both a reference from
+    the user prospective and a technical reference describing how the
+    system works internally.
 
 @section CompileInstall Compilation and installation
 
@@ -21,6 +21,8 @@ make install
 
     More information is provided by the INSTALL file, which is
     included in the software package.
+
+    TODO: how to configure RT and Verbosity
 
 @section License
 
@@ -41,25 +43,25 @@ make install
     \arg GNU Plotutils libplot (v. 2.5-4);
     \arg LibDacav (v. 0.4.2);
 
-@section About this manual
+@section AboutThis About this manual
 
     You may read this text on both the html reference and the report
     attached to the project: it's basically generated through doxygen from
     the same source.
 
     This manual shows the basic principles behind the application. The
-    following modules will be discussed:
+    following topics will be discussed:
 
     @arg @ref Thrd;
     @arg @ref GenThrd;
     @arg @ref Business;
 
-*/
+@defgroup Thrd Soft Real Time Threads
 
-/** @defgroup Thrd Soft Real Time Threads.
+    This module provides a wrapper for the Posix Threads implementation
+    (pthreads) which enables a soft real time pool with periodic threads.
 
-  This module provides a soft real time pool with periodic threads managed
-  with a Rate Monotonic priority assignment.
+    Priority assignment policy follows a Rate Monotonic design.
 
 @section Thrd_Initialization Initialization
 
@@ -67,8 +69,8 @@ make install
     this phase the programmer can add an arbitrary number of threads by
     using the thred_add() function.
 
-    A thread behavior is specified by providing a thrd_info_t structure,
-    which must contain:
+    A thread behavior is specified through a pointer to a thrd_info_t
+    structure, which must contain:
 
     @arg A callback procedure;
     @arg A user context for the callback procedure;
@@ -78,21 +80,21 @@ make install
 
 @section Thrd_Startup Startup
 
-    When all threads have been subscribed, the brave programmer can startup
-    the pool by calling the thrd_start() function, which shall achieve
-    the priority assignment (according with the periods provided for the
-    threads) and, subsequently, enable all threads.
+    When all threads have been subscribed, the brave programmer can start
+    the pool by calling the thrd_start() function, which shall assignment
+    the priority according with the periods provided for the threads.
+    Subsequently the threads will be activated.
 
     Before enabling the threads, the pool records the current absolute
-    time against the monotonic system clock ("CLOCK_MONOTONIC"): the
-    startup delay of all threads is re
+    time against the monotonic system clock (CLOCK_MONOTONIC): the
+    startup delay of all threads is relative to the global activation
+    instant.
 
 @section Thrd_Callbacks Callbacks semantics
 
-    The callbacks are supposed to be the only controlling method with
-    respect to the threading pool.
-
-    They are executed by the thread which they are associated with.
+    As mentioned, each thread is associated with at least one callback
+    procedure. Those callbacks are executed by the thread which they are
+    associated with.
 
     @arg The initialization callback (henceforth "Start") gets executed
          before waiting for the startup delay;
@@ -108,7 +110,8 @@ make install
     In the first place they can, at any time, require the thread to be
     aborted by simply returning a non-zero value.
     
-    In second place they should respect some obvious time constraints:
+    In second place they should respect some real-time related
+    constraints:
     
     @arg The worst case execution time of "Start" should be lesser than
          the thread startup delay, thus this callback should run only the
@@ -117,116 +120,133 @@ make install
          the pthread_self() function).
         
     @arg The worst case execution time of "Business" should be lesser than
-         the period.
+         the period;
 
     Since activations times are beat by calls to the clock_nanosleep()
     system call, a defiant behavior with respect to these constraints
-    shall result in a null waiting time. For a bad designed task set this
-    entails the execution to be jeopardized by domino effect.
+    shall result in a null waiting time.
+    
+    @note A bad designed task set may jeopardize, by domino effect, the
+          whole operating system stability: if the medium case execution
+          time is longer than the period the thread will run as an high
+          priority infinite busy loop!
 
 @section Thrd_Limitations Shutting down
 
-    For the moment the Thread Pool module is not provided with a shutdown
-    procedure: in order to correctly cleanup and free resources the
-    programmer can use the thrd_destroy() function, which simply waits for
-    all the running thread to be terminated and achieves the cleaning up.
+    A Thread Pool object is not provided with a shutdown procedure: in
+    order to correctly cleanup and free resources the programmer can use
+    the thrd_destroy() function, which simply waits for all the running
+    thread to be terminated and achieves the cleaning up.
 
     An elegant solution to this problem is provided by the
     @ref GenThrd module.
 
-*/
+@defgroup GenThrd Generic Threads Interface
 
-/** @defgroup GenThrd Generic Threads
+    The @ref Thrd module provides a nice structure which hides the
+    mechanisms allowing a real-time execution policy, however a drawback
+    is soon becoming clear to the fearless programmer who uses it: the
+    @ref Thrd_Callbacks "return value based shutdown mechanism" can be
+    managed only by the thread itself, while we may need a method to ask
+    the thread termination from outside.
 
-  The @ref Thrd module provides a nice structure which hides the
-  mechanisms allowing a Real-time execution policy, however a drawback
-  is soon becoming clear to the fearless programmer who uses it: the
-  @ref Thrd_Callbacks "return value based shutdown mechanism" is weak.
+    Initially my mind was gazing at a Posix-signal oriented mechanism,
+    which would have provided a way to gently ask the thread to die.
+    Unfortunately the manpages tells us that &ldquo;signal masks are set
+    on a per-thread basis, but signal actions and signal handlers [...]
+    are shared between all threads&rdquo;. Besides, who need signal when
+    there's the pthread_cancel() call does exactly what we need? We just
+    need to deal with cancellation points. Unfortunately the developer is
+    forced to do this in all modules! Once realized that this can be
+    generalized, I had enough cases to make allowance for this code to be
+    written.
 
-  Initially my mind was gazing at a Posix-signal oriented mechanism, which
-  would have provided a way to gently ask the thread to die. Unfortunately
-  the manpages tells us that &ldquo;signal masks are set on a per-thread
-  basis, but signal actions and signal handlers, [...], are shared between
-  all threads&rdquo;. Besides, who need signal when there's the
-  pthread_cancel() call does exactly what we need? We just need to deal
-  with cancellation points. Unfortunately the developer is forced to do
-  this in all modules! Once realized that this can be generalized, I had
-  enough cases to make allowance for this module to be written.
+    A Generic Threads object wraps this mechanism: the thread subscription
+    requires as parameter a Threading Pool object and the same
+    specification structure used by the @ref Thrd module (namely
+    thrd_info_t). It subscribes a private initialization function
+    and uses it to retrieve the thread identifier before calling the
+    "Start" function provided by the user. The identifier is internally
+    used to implement a termination procedure for the thread, and with
+    other useful meta-data will be stored into an extension of the context
+    provided by the user. Everything is associated to a handle.f
 
-  The Generic Threads module acts like a wrapper for this mechanism: the
-  thread subscription requires as parameter a Threading Pool object and
-  the same thread specification structure used by the @ref Thrd module
-  (namely thrd_info_t). It subscribes a private initialization function
-  and uses it to retrieve the thread identifier before calling the "Start"
-  function provided by the user. The thread identifier and other useful
-  metadata will extend the context provided by the user; everything is
-  associated to a handle.
+@section GenThrd_Termination Generic Thread Termination
 
-  @section GenThrd_Termination Generic Thread Termination
-
-    Through the handle of a Generic Thread, the developer can ask the
-    thread to terminate. Internally this is achieved by calling the
-    pthread_destroy() system call.
+    Through the handle of a Generic Thread, the developer can terminate
+    the execution of a real-time task. Internally this is achieved by
+    calling the pthread_destroy() system call.
 
     The module ensures a correct process termination by disabling the
     cancellation of the thread inside its private extension of the
-    initialization function. Cancellation requests are checked once per
-    period; if needed the generic thread takes care of executing the user's
-    "Finish" procedure. This is achieved by using the
+    initialization function. Cancellation requests are explicitly checked
+    once per period and the module takes care of executing the user's
+    "Finish" procedure in case it's needed. This is achieved by using the
     pthread_cleanup_push() and pthread_cleanup_pop() functions.
 
-  @section GenThrd_Context Private Thread Management
+@section GenThrd_Context Developing a Specialized Thread
 
+    From the external developer prospective there's a simple pattern to
+    specialize a Generic Thread:
 
-  @section GenThrd_Drawback Drawbacks
+    @arg Delegate creation and termination to the genth_subscribe() and
+         genth_sendkill() functions respectively;
 
-    @subsection GenThrd_Drawback_TypeSafety Type safety
+    @arg Provide further functionalities trough primitives accepting the
+         header as parameter. The context provided with the thrd_info_t
+         structure can be obtained back from the handle by calling the
+         genth_get_context() function.
 
-        You may have noticed that this system is somehow similar to the
-        inheritance mechanism of object oriented languages: each module
-        using Generic Threads works somehow as it is a class extending
-        Generic Thread.
+    @see The following modules use a generic thread mechanism:
+         @ref BizSampling, BizPlotting, BizSignal, BizSpectrum.
+
+@section GenThrd_Drawback Type Safety Drawback
+
+    You may have noticed that this system is somehow similar to the
+    inheritance mechanism of object oriented languages: each module using
+    Generic Threads works somehow as it is a class extending Generic
+    Thread.
         
-        Unfortunately C++'s <em>virtual</em> keyword is not available to
-        this mechanism, hence the toughtless programmer may call functions
-        provided by a module on the handler obtained by another module.
-        This shall certainly bring to memory corruption.
+    Unfortunately C++'s <em>virtual</em> keyword is not available to this
+    mechanism, hence the toughtless programmer may call functions provided
+    by a module on the handler obtained by another module.  This shall
+    certainly bring to memory corruption.
+
+@defgroup AlsaGw Alsa Gateway 
+
+    This module hides Alsa's weird bogus under a hood, providing a simple
+    initialization / finalization / reading interface.
+
+    The samp_new() function allocates a new sampler and allows to provide
+    some parameters for the underlying library (namely Alsa ASoundLib).
+
+    In order to read data from Alsa, the samp_read() function can be
+    invoked. Since the module initializes Alsa in a non-locking way, in
+    principle this function will return immediately. Sometimes however the
+    data may be not available. In those cases the user can specify a
+    maximum amount of time to spend waiting for the resource to be
+    available. Note that this feature is provided directly by Alsa through
+    the snd_pcm_wait() function: this is probably implemented with some
+    asynchronous calls.
+
+    Other functions provided by this module allow to obtain additional
+    information which can be used to correctly tune other modules.
+
+    The samp_destroy() function can be eventually used to release
+    resources.
+
+@defgroup BizSampling Sampling Thread
+
+    This module implements a @ref GenThrd "Generic Thread" which achieves
+    the sampling phase.
+
+    The sampling period, obtained by calling samp_get_period(), is the one
+    computed by Alsa from the parameters provided trough the \ref AlsaGw
+    interface.
+
+@defgroup BizPlotting Plotting Thread
+@defgroup BizSignal Signal Thread
+@defgroup BizSpectrum Spectrum Thread
+@defgroup BizOptions Command line options
 
 */
-
-/** @defgroup Business Business Logic of the Program */
-
-/*@{*/
-
-/** @defgroup AlsaGw Alsa Gateway 
-
-  This module hides Alsa's weird bogus under a hood, providing a simple
-  initialization / finalization / reading interface.
-
-  The samp_new() function allocates a new sampler and allows to provide
-  some parameters for the underlying library (namely Alsa ASoundLib.
-
-  In order to read data from Alsa, the samp_read() function can be
-  invoked. Since the module initializes Alsa in a non-locking way, in
-  principle this function will return immediately. Sometimes however the
-  data may be not available. In those cases the user can specify a maximum
-  amount of time to spend waiting for the resource to be available. Note
-  that this feature is provided directly by Alsa through the
-  snd_pcm_wait() function: this is probably implemented with some
-  asynchronous calls.
-
-  Other functions provided by this module allow to obtain additional
-  information which can be used to correctly tune other modules.
-
-  The samp_destroy() function can be eventually used to release
-  resources.
-
-*/
-
-/** @defgroup Options Command line options */
-/** @defgroup Sampling Sampling Thread */
-/** @defgroup Plotting Plotting Thread */
-/** @defgroup Signal Showing the Signal */
-/** @defgroup Spectrum Showing the Spectrum */
-
-/*@}*/

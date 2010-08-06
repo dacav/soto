@@ -36,7 +36,7 @@ extern "C" {
 #include "headers/plotting.h"
 #include "alsagw.h"
 
-/** Subscribe a plotting thread to the given pool.
+/** @brief Subscribe a plotting thread to the given pool.
  *
  * @param handle Thea address of a pointer where the plotting thread
  *               handle address will be stored;

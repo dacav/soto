@@ -33,13 +33,13 @@ extern "C" {
 #include <time.h>
 #include <stdint.h>
 
-/** Opaque type for the sampling system descriptor.
+/** @brief Opaque type for the sampling system descriptor.
  *
  * The samp_new() function allocates and intializes a new descriptor.
  */
 typedef struct samp samp_t;
 
-/** Sample type: just a pair of int16.
+/** @brief Sample type: just a pair of int16.
  *
  * For sake of simplicity the program manages audio streams in the format
  * S16 LE PCM (Signed 16-bit Little-Endian Pulse Code Modulation).
@@ -49,7 +49,7 @@ typedef struct {
     int16_t ch1;    /**< Channel 1. */
 } samp_frame_t;
 
-/** Constructor for the sampler.
+/** @brief Constructor for the sampler.
  *
  * @param device The alsa device (e.g. "hw0:0");
  * @param rate The sampling rate (e.g. 44100);
@@ -63,14 +63,14 @@ typedef struct {
  */
 samp_t * samp_new (const char *device, unsigned rate, int *err);
 
-/** Getter for the computed period.
+/** @brief Getter for the computed period.
  *
  * @param samp The sampler.
  * @return The time between reads.
  */
 const struct timespec * samp_get_period (const samp_t *samp);
 
-/** Getter for the size in frames of the buffer.
+/** @brief Getter for the size in frames of the buffer.
  *
  * This module is not in charge to allocate the buffer: this primitive
  * simply returns the size of the buffer that an external module must use.
@@ -80,7 +80,7 @@ const struct timespec * samp_get_period (const samp_t *samp);
  */
 snd_pcm_uframes_t samp_get_nframes (const samp_t *samp);
 
-/** Semi-blocking read of a sample.
+/** @brief Semi-blocking read of a sample.
  *
  * This function automatically recovers xruns and errors.
  *
@@ -102,7 +102,7 @@ snd_pcm_uframes_t samp_get_nframes (const samp_t *samp);
 int samp_read (samp_t *samp, samp_frame_t *buffer,
                snd_pcm_uframes_t bufsize, int maxwait);
 
-/** Getter for the sampling rate.
+/** @brief Getter for the sampling rate.
  *
  * @param samp The sampler.
  * @return The sampling rate.
@@ -115,7 +115,7 @@ int samp_read (samp_t *samp, samp_frame_t *buffer,
  */
 unsigned samp_get_rate (const samp_t *samp);
 
-/** Destroyer.
+/** @brief Sampler destroyer.
  *
  * @warning Please do not forget to disable any thread using the sampler
  *          before using this function.
