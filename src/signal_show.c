@@ -29,7 +29,7 @@
 #include "headers/sampthread.h"
 
 struct signth_data {
-    samp_frame_t *buffer;
+    alsagw_frame_t *buffer;
     snd_pcm_uframes_t buflen;
     genth_t *sampth;
 
@@ -52,7 +52,7 @@ int thread_cb (void *arg)
 {
     unsigned i;
     struct signth_data *ctx = (struct signth_data *)arg;
-    samp_frame_t *buffer;
+    alsagw_frame_t *buffer;
 
     buffer = ctx->buffer;
     sampth_get_samples(ctx->sampth, buffer);
@@ -90,7 +90,7 @@ int signth_subscribe (genth_t **handle, thrd_pool_t *pool,
     rtutils_time_copy(&thi.period, &thi.delay);
 
     ctx->buflen = sampth_get_size(sampth);
-    ctx->buffer = calloc(ctx->buflen, sizeof(samp_frame_t));
+    ctx->buffer = calloc(ctx->buflen, sizeof(alsagw_frame_t));
     assert(ctx->buffer);
 
     ctx->g0 = g0;

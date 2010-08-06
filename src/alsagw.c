@@ -75,24 +75,24 @@ int init_soundcard (snd_pcm_t *handle, unsigned *rate,
     return 0;
 }
 
-const struct timespec * samp_get_period (const samp_t *samp)
+const struct timespec * alsagw_get_period (const alsagw_t *samp)
 {
     return &samp->period;
 }
 
-snd_pcm_uframes_t samp_get_nframes (const samp_t *samp)
+snd_pcm_uframes_t alsagw_get_nframes (const alsagw_t *samp)
 {
     return samp->nframes;
 }
 
-unsigned samp_get_rate (const samp_t *samp)
+unsigned alsagw_get_rate (const alsagw_t *samp)
 {
     return samp->rate;
 }
 
-samp_t * samp_new (const char *device, unsigned rate, int *err)
+alsagw_t * alsagw_new (const char *device, unsigned rate, int *err)
 {
-    samp_t *s;
+    alsagw_t *s;
     snd_pcm_uframes_t nframes;
     unsigned period;
     snd_pcm_t *pcm;
@@ -109,7 +109,7 @@ samp_t * samp_new (const char *device, unsigned rate, int *err)
         return NULL;
     }
 
-    s = (samp_t *) calloc(1, sizeof(samp_t));
+    s = (alsagw_t *) calloc(1, sizeof(alsagw_t));
     assert(s);
 
     s->pcm = pcm;
@@ -120,7 +120,7 @@ samp_t * samp_new (const char *device, unsigned rate, int *err)
     return s;
 }
 
-void samp_destroy (samp_t *s)
+void alsagw_destroy (alsagw_t *s)
 {
     if (s != NULL) {
         snd_pcm_close(s->pcm);
@@ -128,8 +128,8 @@ void samp_destroy (samp_t *s)
     }
 }
 
-int samp_read (samp_t *samp, samp_frame_t *buffer,
-               snd_pcm_uframes_t bufsize, int maxwait)
+int alsagw_read (alsagw_t *samp, alsagw_frame_t *buffer,
+                 snd_pcm_uframes_t bufsize, int maxwait)
 {
     int nread;
     snd_pcm_t *pcm = samp->pcm;

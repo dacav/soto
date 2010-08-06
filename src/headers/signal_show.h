@@ -38,7 +38,7 @@ extern "C" {
 
 /** Subscribe a direct thread to the given pool.
  *
- * The sampling object (samp_t) must not necessarly be already created
+ * The sampling object (alsagw_t) must not necessarly be already created
  * when this function is called, however the samp parameter must contain
  * the same definition, since it will determine the period definition of
  * the realtime thread.

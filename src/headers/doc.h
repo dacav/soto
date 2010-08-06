@@ -26,8 +26,7 @@ make install
 
 @section License
 
-    Soto is free software: you can redistribute it and/or modify it
-    under the terms of the GNU General Public License as published by
+    Soto is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
 
@@ -217,10 +216,10 @@ make install
     This module hides Alsa's weird bogus under a hood, providing a simple
     initialization / finalization / reading interface.
 
-    The samp_new() function allocates a new sampler and allows to provide
+    The alsagw_new() function allocates a new sampler and allows to provide
     some parameters for the underlying library (namely Alsa ASoundLib).
 
-    In order to read data from Alsa, the samp_read() function can be
+    In order to read data from Alsa, the alsagw_read() function can be
     invoked. Since the module initializes Alsa in a non-locking way, in
     principle this function will return immediately. Sometimes however the
     data may be not available. In those cases the user can specify a
@@ -232,7 +231,7 @@ make install
     Other functions provided by this module allow to obtain additional
     information which can be used to correctly tune other modules.
 
-    The samp_destroy() function can be eventually used to release
+    The alsagw_destroy() function can be eventually used to release
     resources.
 
 @defgroup BizSampling Sampling Thread
@@ -240,7 +239,7 @@ make install
     This module implements a @ref GenThrd "Generic Thread" which achieves
     the sampling phase.
 
-    The sampling period, obtained by calling samp_get_period(), is the one
+    The sampling period, obtained by calling the alsagw_get_period(), is the one
     computed by Alsa from the parameters provided trough the \ref AlsaGw
     interface.
 

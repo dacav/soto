@@ -30,9 +30,9 @@
 
 /* Sampling thread internal information set. */
 struct sampth_data {
-    samp_t *sampler;                    /* Alsa handler; */
+    alsagw_t *sampler;                    /* Alsa handler; */
 
-    samp_frame_t * buffer;              /* Reading buffer; */
+    alsagw_frame_t * buffer;              /* Reading buffer; */
     snd_pcm_uframes_t slot_size;        /* Size of a sample; */
     size_t nslots;                      /* Room for samples; */
     unsigned slot;                      /* Slot cursor; */
@@ -71,7 +71,7 @@ int thread_cb (void *arg)
 
     pthread_mutex_lock(&ctx->mux);
     slot = ctx->slot;
-    nread = samp_read(ctx->sampler, ctx->buffer + slot * ctx->slot_size,
+    nread = alsagw_read(ctx->sampler, ctx->buffer + slot * ctx->slot_size,
                       ctx->slot_size, ctx->alsa_wait_max);
     ctx->slot = (slot + 1) % ctx->nslots;
     pthread_mutex_unlock(&ctx->mux);
@@ -84,7 +84,7 @@ int thread_cb (void *arg)
 }
 
 int sampth_subscribe (genth_t **handler, thrd_pool_t *pool,
-                      samp_t *samp, size_t scaling_factor)
+                      alsagw_t *samp, size_t scaling_factor)
 {
     thrd_info_t thi;
     struct sampth_data *ctx;
@@ -105,9 +105,9 @@ int sampth_subscribe (genth_t **handler, thrd_pool_t *pool,
 
     DEBUG_FMT("Scaling factor %d\n", (int) scaling_factor);
     ctx->nslots = scaling_factor;
-    ctx->slot_size = samp_get_nframes(samp);
-    ctx->buffer = (samp_frame_t *) calloc(scaling_factor * ctx->slot_size,
-                                          sizeof(samp_frame_t));
+    ctx->slot_size = alsagw_get_nframes(samp);
+    ctx->buffer = (alsagw_frame_t *) calloc(scaling_factor * ctx->slot_size,
+                                          sizeof(alsagw_frame_t));
     ctx->slot = 0;
     pthread_mutex_init(&ctx->mux, NULL);
 
@@ -115,7 +115,7 @@ int sampth_subscribe (genth_t **handler, thrd_pool_t *pool,
     thi.delay.tv_nsec = SAMP_STARTUP_DELAY_nSEC;
 
     /* Period management. */
-    period = samp_get_period(samp);
+    period = alsagw_get_period(samp);
     rtutils_time_copy(&ctx->read_period, period);
     rtutils_time_multiply(&ctx->read_period, scaling_factor);
 
@@ -138,7 +138,7 @@ snd_pcm_uframes_t sampth_get_size (const genth_t *handler)
     return ctx->slot_size * ctx->nslots;
 }
 
-void sampth_get_samples (genth_t *handler, samp_frame_t buffer[])
+void sampth_get_samples (genth_t *handler, alsagw_frame_t buffer[])
 {
     struct sampth_data *ctx = genth_get_context(handler);
     const size_t sls = ctx->slot_size;
@@ -150,10 +150,10 @@ void sampth_get_samples (genth_t *handler, samp_frame_t buffer[])
     nframes = sls * (ctx->nslots - slot);
     memcpy((void *)buffer,
            (const void *)&ctx->buffer[sls * slot],
-           sizeof(samp_frame_t) * nframes);
+           sizeof(alsagw_frame_t) * nframes);
     memcpy((void *)(buffer + nframes),
            (const void *)ctx->buffer,
-           sizeof(samp_frame_t) * sls * slot);
+           sizeof(alsagw_frame_t) * sls * slot);
     pthread_mutex_unlock(&ctx->mux);
 }
 

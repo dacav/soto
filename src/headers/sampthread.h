@@ -54,7 +54,7 @@ extern "C" {
  *         interpret its return value as if it were thrd_add().
  */
 int sampth_subscribe (genth_t **handler, thrd_pool_t *pool,
-                      samp_t *samp, size_t scaling_factor);
+                      alsagw_t *samp, size_t scaling_factor);
 
 /** Getter for the size of the reading buffer.
  *
@@ -72,7 +72,7 @@ snd_pcm_uframes_t sampth_get_size (const genth_t *handler);
  * @param handler The sampling thread which buffer shall be read;
  * @param buffer The buffer where the data shall be stored.
  */
-void sampth_get_samples (genth_t *handler, samp_frame_t buffer[]);
+void sampth_get_samples (genth_t *handler, alsagw_frame_t buffer[]);
 
 /** Getter for the correct reading period for the buffer.
  *

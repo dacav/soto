@@ -35,9 +35,9 @@ extern "C" {
 
 /** @brief Opaque type for the sampling system descriptor.
  *
- * The samp_new() function allocates and intializes a new descriptor.
+ * The alsagw_new() function allocates and intializes a new descriptor.
  */
-typedef struct samp samp_t;
+typedef struct samp alsagw_t;
 
 /** @brief Sample type: just a pair of int16.
  *
@@ -47,7 +47,7 @@ typedef struct samp samp_t;
 typedef struct {
     int16_t ch0;    /**< Channel 0; */
     int16_t ch1;    /**< Channel 1. */
-} samp_frame_t;
+} alsagw_frame_t;
 
 /** @brief Constructor for the sampler.
  *
@@ -61,14 +61,14 @@ typedef struct {
  * @return The newly allocated sampler.
  * @retval NULL if something went wrong (in which case check err).
  */
-samp_t * samp_new (const char *device, unsigned rate, int *err);
+alsagw_t * alsagw_new (const char *device, unsigned rate, int *err);
 
 /** @brief Getter for the computed period.
  *
  * @param samp The sampler.
  * @return The time between reads.
  */
-const struct timespec * samp_get_period (const samp_t *samp);
+const struct timespec * alsagw_get_period (const alsagw_t *samp);
 
 /** @brief Getter for the size in frames of the buffer.
  *
@@ -78,7 +78,7 @@ const struct timespec * samp_get_period (const samp_t *samp);
  * @param samp The sampler;
  * @return The buffer size in frames.
  */
-snd_pcm_uframes_t samp_get_nframes (const samp_t *samp);
+snd_pcm_uframes_t alsagw_get_nframes (const alsagw_t *samp);
 
 /** @brief Semi-blocking read of a sample.
  *
@@ -99,21 +99,21 @@ snd_pcm_uframes_t samp_get_nframes (const samp_t *samp);
  *          wait until the resource is available. Namely this will make
  *          this function blocking.
  */
-int samp_read (samp_t *samp, samp_frame_t *buffer,
-               snd_pcm_uframes_t bufsize, int maxwait);
+int alsagw_read (alsagw_t *samp, alsagw_frame_t *buffer,
+                 snd_pcm_uframes_t bufsize, int maxwait);
 
 /** @brief Getter for the sampling rate.
  *
  * @param samp The sampler.
  * @return The sampling rate.
  *
- * @note This should be the same rate you gave as input for samp_new(),
+ * @note This should be the same rate you gave as input for alsagw_new(),
  *       however Alsa may decide to modify the sample rate given by the
  *       constructor in order to fit soundcard specification. The wise
  *       programmer relies on the rate returned by this function, instead
- *       of using the one provided as parameter for samp_new().
+ *       of using the one provided as parameter for alsagw_new().
  */
-unsigned samp_get_rate (const samp_t *samp);
+unsigned alsagw_get_rate (const alsagw_t *samp);
 
 /** @brief Sampler destroyer.
  *
@@ -122,7 +122,7 @@ unsigned samp_get_rate (const samp_t *samp);
  *
  * @param s The sampler to be destroyed.
  */
-void samp_destroy (samp_t *s);
+void alsagw_destroy (alsagw_t *s);
 
 /*@}*/
 

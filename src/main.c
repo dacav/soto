@@ -42,7 +42,7 @@
 struct main_data {
     opts_t *opts;
     thrd_pool_t *pool;
-    samp_t *sampler;
+    alsagw_t *sampler;
 
     plot_t *spectrum;
     plot_t *signal;
@@ -77,7 +77,7 @@ void exit_handler (int xval, void *context)
         thrd_destroy(data->pool, &dmiss);
         LOG_FMT("The pool registred %llu deadline misses", dmiss);
     }
-    if (data->sampler) samp_destroy(data->sampler);
+    if (data->sampler) alsagw_destroy(data->sampler);
     if (data->spectrum) plot_destroy(data->spectrum);
     if (data->signal) plot_destroy(data->signal);
 
@@ -110,7 +110,7 @@ int main (int argc, char **argv)
     on_exit(exit_handler, (void *) &data);
 
     data.pool = thrd_new(opts_get_minprio(data.opts));
-    data.sampler = samp_new(opts_get_device(data.opts),
+    data.sampler = alsagw_new(opts_get_device(data.opts),
                             opts_get_rate(data.opts),
                             &err);
     if (data.sampler == NULL) {

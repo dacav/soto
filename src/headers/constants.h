@@ -87,7 +87,7 @@ extern "C" {
 #define DEFAULT_DEVICE          "hw:0,0"
 
 /** @brief Default proportion between sampling buffer and read buffer */
-#define DEFAULT_BUFFER_SCALE    1000
+#define DEFAULT_BUFFER_SCALE    50
 
 /** @brief Default time of execution for the buffer */
 #define DEFAULT_RUN_FOR         0

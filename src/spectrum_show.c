@@ -42,7 +42,7 @@ struct fourier {
 };
 
 struct specth_data {
-    samp_frame_t *buffer;
+    alsagw_frame_t *buffer;
     snd_pcm_uframes_t buflen;
     genth_t *sampth;
 
@@ -72,9 +72,9 @@ int16_t denormalize (double val)
 }
 
 static
-void build_spectrum (struct fourier *ft, samp_frame_t *buffer,
+void build_spectrum (struct fourier *ft, alsagw_frame_t *buffer,
                      size_t buflen, plotgr_t *imag, plotgr_t *real,
-                     double (*normalize) (samp_frame_t *))
+                     double (*normalize) (alsagw_frame_t *))
 {
     size_t nfreqs = buflen >> 1 ;
     int i, j;
@@ -100,13 +100,13 @@ void build_spectrum (struct fourier *ft, samp_frame_t *buffer,
 }
 
 static
-double normalize_ch0 (samp_frame_t *f)
+double normalize_ch0 (alsagw_frame_t *f)
 {
     return (double)(f->ch0) / INT16_MAX;
 }
 
 static
-double normalize_ch1 (samp_frame_t *f)
+double normalize_ch1 (alsagw_frame_t *f)
 {
     return (double)(f->ch1) / INT16_MAX;
 }
@@ -154,7 +154,7 @@ int specth_subscribe (genth_t **handle, thrd_pool_t *pool,
 
     memcpy(&ctx->graphs, graphs, sizeof(specth_graphics_t));
     ctx->buflen = buflen = sampth_get_size(sampth);
-    ctx->buffer = calloc(buflen, sizeof(samp_frame_t));
+    ctx->buffer = calloc(buflen, sizeof(alsagw_frame_t));
     ctx->sampth = sampth;
     ctx->ft.in = (double *) fftw_malloc(sizeof(double) * buflen);
 
