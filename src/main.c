@@ -66,13 +66,13 @@ void exit_handler (int xval, void *context)
 
     LOG_MSG("Sending kill to all threads...");
     while (!dlist_empty(data->threads)) {
-        genth_t *handle;
+        void *handle;
 
         data->threads = dlist_pop(data->threads, (void **)&handle);
-        genth_sendkill(handle);
+        genth_sendkill((genth_t *)handle);
     }
-    LOG_MSG("Waiting until they're dead (if you just closed the window");
-    LOG_MSG("you've better to kill the program explicitly).");
+    LOG_MSG("Waiting until they're dead (WARNING: if you just closed");
+    LOG_MSG("the window, you've better to kill the program explicitly).");
     if (data->pool) {
         thrd_destroy(data->pool, &dmiss);
         LOG_FMT("The pool registred %llu deadline misses", dmiss);

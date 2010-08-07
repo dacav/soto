@@ -51,9 +51,10 @@ extern "C" {
 #define PLOT_PERIOD_nSEC        35714286     
 
 /** @brief Proportion divisor between sampling thread period and sampling wait in
- * case of failure. This will be multiplied by period in sampthread.c.
+ * case of failure. The period will be divided by this in sampthread.c.
+ * Set it to 0 in order to remove the waiting.
  */
-#define ALSA_WAIT_PROPORTION    2
+#define ALSA_WAIT_PROPORTION    0
 
 /** @brief Size of the graphical window used for plotting. */
 #define PLOT_BITMAPSIZE         "400x250"

@@ -120,7 +120,9 @@ int sampth_subscribe (genth_t **handler, thrd_pool_t *pool,
     rtutils_time_multiply(&ctx->read_period, scaling_factor);
 
     /* How much should I be locked waiting for a not-available data? */
-    ctx->alsa_wait_max = rtutils_time2ns(period) / ALSA_WAIT_PROPORTION;
+    ctx->alsa_wait_max = ALSA_WAIT_PROPORTION != 0 ?
+                         rtutils_time2ns(period) / ALSA_WAIT_PROPORTION :
+                         0;
 
     /* Period request for the thread pool */
     rtutils_time_copy(&thi.period, period);
