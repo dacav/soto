@@ -20,15 +20,18 @@ make install
 @endverbatim
 
     More information is provided by the INSTALL file, which is
-    included in the software package.
+    included in the software package, however two special non-standard
+    options can be provided to the configure script:
 
-    TODO: how to configure RT and Verbosity
+    @arg --enable-debug (which will give a more verbose output on stderr);
+    @arg --disable-realtime (which will disable real-time programming).
 
 @section License
 
-    Soto is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
+    Soto is free software: you can redistribute it and/or modify it under
+    the terms of the GNU General Public License as published by the Free
+    Software Foundation, either version 3 of the License, or (at your
+    option) any later version.
 
     A copy of the GNU General Public License is provided along with
     Soto: see the COPYING file.
@@ -48,12 +51,26 @@ make install
     attached to the project: it's basically generated through doxygen from
     the same source.
 
-    This manual shows the basic principles behind the application. The
-    following topics will be discussed:
+    This manual explains how the application works. If you are reading the
+    PDF version you won't find a reference manual: please refer to the
+    html documentation if you need it.
+
+    The application provide two general purpose modules that are heavvily
+    used but not strictly related with the application's purpose:
 
     @arg @ref Thrd;
     @arg @ref GenThrd;
-    @arg @ref Business;
+
+    The following topics will also be discussed for what concerns the
+    business logic:
+
+    @arg @ref BizAlsaGw;
+    @arg @ref BizPlotting;
+    @arg @ref BizPlotThread;
+    @arg @ref BizSampling;
+    @arg @ref BizSignal;
+    @arg @ref BizSpectrum;
+    @arg @ref BizOptions;
 
 @defgroup Thrd Soft Real Time Threads
 
@@ -203,15 +220,14 @@ make install
 
     You may have noticed that this system is somehow similar to the
     inheritance mechanism of object oriented languages: each module using
-    Generic Threads works somehow as it is a class extending Generic
-    Thread.
+    Generic Threads works somehow as a class extending an abstract one.
         
     Unfortunately C++'s <em>virtual</em> keyword is not available to this
     mechanism, hence the toughtless programmer may call functions provided
     by a module on the handler obtained by another module.  This shall
     certainly bring to memory corruption.
 
-@defgroup AlsaGw Alsa Gateway 
+@defgroup BizAlsaGw Alsa Gateway 
 
     This module hides Alsa's weird bogus under a hood, providing a simple
     initialization / finalization / reading interface.
@@ -234,16 +250,44 @@ make install
     The alsagw_destroy() function can be eventually used to release
     resources.
 
+@defgroup BizPlotting Plotting Interface
+
+    As mentioned in the @ref CompileInstall section, this program uses
+    GNU Libplot for the graphical representation of the data: this module
+    provides a simple interface to the library suited for the
+    application's purpose. In order to obtain a good thread-safe code, the
+    reentrant version of the library is used. 
+
+    The constructor provided by this module allows to allocate a X Window
+    for plotting. The number of functions displayed for each plotting
+    window can be configured trough the constructor.
+
+@defgroup BizPlotThread Plotting Thread
+
+    This module implements a @ref GenThrd "Generic Thread" which updates
+    a plot with a frequency of 28 Hz.
+
+    The plotting functions in use are the one provided by the @ref 
+
 @defgroup BizSampling Sampling Thread
 
     This module implements a @ref GenThrd "Generic Thread" which achieves
     the sampling phase.
 
-    The sampling period, obtained by calling the alsagw_get_period(), is the one
-    computed by Alsa from the parameters provided trough the \ref AlsaGw
-    interface.
+    The sampling period is obtained by calling the alsagw_get_period(),
+    which in turns uses the value computed by Alsa from the parameters
+    provided trough the \ref BizAlsaGw interface.
 
-@defgroup BizPlotting Plotting Thread
+    When allocating a Sampling Thread a scaling factor must be provided:
+    this value is used to dimension an internal buffer which size is
+    multiple of the actual buffer needed by alsa. The buffer is used as a
+    slotted circular array. Each periodic job of this thread achieves one
+    non-blocking read: the result replaces the oldest slot.
+
+    An external thread can read the data by using the sampth_get_samples()
+    function, which performs a thread-safe reading from the oldest to the
+    newest slot of the circular buffer.
+
 @defgroup BizSignal Signal Thread
 @defgroup BizSpectrum Spectrum Thread
 @defgroup BizOptions Command line options
