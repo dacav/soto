@@ -18,12 +18,10 @@
  *
  */
 
-/** @file spectrum_show.h
- *
- * This module provieds the subscription through genthrd of a
- * thread in charge of displaying the raw data.
- *
- */
+/** @file spectrum_show.h */
+/** @addtogroup BizSpectrum */
+/*@{*/
+
 
 #ifndef __defined_headers_specthread_h
 #define __defined_headers_specthread_h
@@ -36,14 +34,18 @@ extern "C" {
 #include "headers/plotting.h"
 #include "alsagw.h"
 
+/** @brief Parameter structure for specth_subscribe().
+ *
+ * Provides the four graphics to write in.
+ */
 typedef struct {
-    plotgr_t *r0;
-    plotgr_t *i0;
-    plotgr_t *r1;
-    plotgr_t *i1;
+    plotgr_t *r0;   /**< Real part of channel 0 */
+    plotgr_t *i0;   /**< Imaginary part of channel 0 */
+    plotgr_t *r1;   /**< Real part of channel 1 */
+    plotgr_t *i1;   /**< Imaginary part of channel 1 */
 } specth_graphics_t;
 
-/** Subscribe a direct thread to the given pool.
+/** @brief Subscribe a direct thread to the given pool.
  *
  * The sampling object (alsagw_t) must not necessarly be already created
  * when this function is called, however the samp parameter must contain
@@ -54,12 +56,15 @@ typedef struct {
  *               handle address will be stored;
  * @param pool The pool to which the sampler will be subscribed;
  * @param sampth The handle of the sampler thread;
+ * @param graphs A structure containing pointers to the graphs.
  *
  * @return This function just adds something to pool, therefore you may
  *         interpret its return value as if it were thrd_add().
  */
 int specth_subscribe (genth_t **handle, thrd_pool_t *pool,
-                      genth_t *sampth, specth_graphics_t *graphs);
+                      genth_t *sampth, const specth_graphics_t *graphs);
+
+/*@}*/
 
 #ifdef __cplusplus
 }

@@ -18,11 +18,10 @@
  *
  */
 
-/** @file genthrd.h
- *
- * This module provides a common interface for other modules, which in
- * turn provide real-time threads subscribed to a thread pool.
- */
+/** @file genthrd.h */
+
+/** @addtogroup GenThrd */
+/*@{*/
 
 #ifndef __defined_headers_genthrd_h
 #define __defined_headers_genthrd_h
@@ -68,6 +67,8 @@ int genth_sendkill (genth_t *handle);
  * @return The internal context of the thread.
  */
 void * genth_get_context (const genth_t *handle);
+
+/*@}*/
 
 #ifdef __cplusplus
 }

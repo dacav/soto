@@ -18,13 +18,9 @@
  *
  */
 
-/** @file plotting.h
- *
- * This module restricts the access to plot.h and provides a clean
- * interface that allows to plot a representation composed of two
- * graphics.
- *
- */
+/** @file plotting.h */
+/** @addtogroup BizPlotting */
+/*@{*/
 
 #ifndef __defined_headers_plotting_h
 #define __defined_headers_plotting_h
@@ -44,7 +40,8 @@ typedef struct graphic plotgr_t;
 
 /** @brief Plotter constructor.
  *
- * @note This function spawns a X11 window on which the plot will be displayed.
+ * @note This function spawns a X11 window on which the plot will be
+ *       displayed.
  *
  * @param n The number of graphics that shall be drawn on the canvas;
  * @param max_x The maximum accepted value for the x axis.
@@ -86,6 +83,8 @@ void plot_redraw(plot_t *p);
  * @param p The plotter to be destroyed.
  */
 void plot_destroy (plot_t *p);
+
+/*@}*/
 
 #ifdef __cplusplus
 }

@@ -18,12 +18,9 @@
  *
  */
 
-/** @file plotthread.h
- *
- * This module provieds the subscription through genthrd of a
- * thread in charge of doing the data elaboration phase.
- *
- */
+/** @file plotthread.h */
+/** @addtogroup BizPlotThread */
+/*@{*/
 
 #ifndef __defined_headers_plotthread_h
 #define __defined_headers_plotthread_h
@@ -48,6 +45,8 @@ extern "C" {
  */
 int plotth_subscribe (genth_t **handle, thrd_pool_t *pool,
                       plot_t *plot);
+
+/*@}*/
 
 #ifdef __cplusplus
 }

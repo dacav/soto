@@ -18,16 +18,9 @@
  *
  */
 
-/** @file sampthread.h
- *
- * This module provieds a clean interface to pool (headers/thrd.h)
- * subscription of the thread in charge of doing the sampling phase.
- *
- * @warning The wise programmer avoids two sampling thread
- *          simultaneously!
- */
-
 /** @file sampthread.h */
+/** @addtogroup BizSampThread */
+/*@{*/
 
 #ifndef __defined_headers_sampth_h
 #define __defined_headers_sampth_h
@@ -82,6 +75,8 @@ void sampth_get_samples (genth_t *handler, alsagw_frame_t buffer[]);
  *         buffer.
  */
 const struct timespec * sampth_get_period (const genth_t *handler);
+
+/*@}*/
 
 #ifdef __cplusplus
 }

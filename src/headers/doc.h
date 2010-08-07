@@ -72,6 +72,8 @@ make install
     @arg @ref BizSpectrum;
     @arg @ref BizOptions;
 
+@section CLI Command Line Usage
+
 @defgroup Thrd Soft Real Time Threads
 
     This module provides a wrapper for the Posix Threads implementation
@@ -214,7 +216,8 @@ make install
          genth_get_context() function.
 
     @see The following modules use a generic thread mechanism:
-         @ref BizSampling, BizPlotting, BizSignal, BizSpectrum.
+         @ref BizSampling, @ref BizPlotting, @ref BizSignal,
+         @ref BizSpectrum.
 
 @section GenThrd_Drawback Type Safety Drawback
 
@@ -260,14 +263,42 @@ make install
 
     The constructor provided by this module allows to allocate a X Window
     for plotting. The number of functions displayed for each plotting
-    window can be configured trough the constructor.
+    window can be configured trough the constructor. A plot_t object
+    configured with N graphics will spawn up to N plotgr_t objects, each
+    of which corresponds to a graphic.
+    
+    Since internally they implement a mutex-based semantics, it's
+    perfectly safe to manage them from different threads. Two possible
+    kind of actions can be performed:
+
+    @arg Updating the graph through the plot_graphic_set() function;
+    @arg Refreshing the plotting window trough the plot_redraw() function.
+
+    The latter can be easily assigned to a specialized thread by using a
+    @ref BizPlotThread.
 
 @defgroup BizPlotThread Plotting Thread
 
     This module implements a @ref GenThrd "Generic Thread" which updates
-    a plot with a frequency of 28 Hz.
+    a plot. It's tought to extend the functionalities provided by the
+    @ref BizPlotting module without mixing conceptually different
+    execution logics. The thread is in charge of refreshing a plotting
+    window.
+   
+    The refresh operation is performed 28 times per second, which is
+    approximatively the frequency detectable by human eyes. The period
+    corresponds to 35,714,286 nanoseconds.
+   
+    Luckily the chosen period is large enough for the plot_redraw()
+    function to be executed. A test I run on my own computer shows that
+    redrawing a 100-points sized grapic:
+   
+    @arg In the worst case it takes 28,760,359 nanoseconds;
+    @arg In the average case it takes 6,081,251 nanoseconds.
 
-    The plotting functions in use are the one provided by the @ref 
+    @note The plotting speed can be somehow tuned by providing a scaling
+          parameter to the application. For further details see the
+          @ref CLI section.
 
 @defgroup BizSampling Sampling Thread
 
@@ -289,7 +320,35 @@ make install
     newest slot of the circular buffer.
 
 @defgroup BizSignal Signal Thread
+
+    This module allows to spawn one (or more) graphical windows showing
+    the signal collected by the @ref BizSampling.
+
+    When creating a Signal Thread two plotgr_t objects must be provided to
+    the constructor: one for the first channel, one for the second
+    channel. The plotgr_t objects can be obtained trough the
+    plot_new_graphic() function, provided by the @ref BizPlotting module.
+    They are not required to come from the same plot_t object.
+
 @defgroup BizSpectrum Spectrum Thread
+
+    This module allows to spawn one (or more) graphical windows showing
+    the spectrum of the signal collected by the @ref BizSampling. The
+    spectrum gets computed by using the fftw3 library.
+
+    When creating a Signal Thread two couple of plotgr_t objects must be
+    provided to the constructor: the former for the first channel (real and
+    imaginary part of the spectrum), the latter for the second channel
+    (again, real and imaginary part). The plotgr_t objects can be obtained
+    trough the plot_new_graphic() function, provided by the
+    @ref BizPlotting module. They are not required to come from the same
+    plot_t object.
+
 @defgroup BizOptions Command line options
+
+    This module provides a wrapper for Getopt which extracts the options
+    required for the Soto program.
+
+    @see @ref CLI gives further information on the command line options.
 
 */

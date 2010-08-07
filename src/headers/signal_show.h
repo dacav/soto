@@ -18,12 +18,9 @@
  *
  */
 
-/** @file signal_show.h
- *
- * This module provieds the subscription through genthrd of a
- * thread in charge of displaying the raw data.
- *
- */
+/** @file signal_show.h */
+/** @addtogroup BizSignal */
+/*@{*/
 
 #ifndef __defined_headers_signthread_h
 #define __defined_headers_signthread_h
@@ -36,7 +33,7 @@ extern "C" {
 #include "headers/plotting.h"
 #include "alsagw.h"
 
-/** Subscribe a direct thread to the given pool.
+/** @brief Subscribe a direct thread to the given pool.
  *
  * The sampling object (alsagw_t) must not necessarly be already created
  * when this function is called, however the samp parameter must contain
@@ -55,6 +52,8 @@ extern "C" {
  */
 int signth_subscribe (genth_t **handle, thrd_pool_t *pool,
                       genth_t *sampth, plotgr_t *g0, plotgr_t *g1);
+
+/*@}*/
 
 #ifdef __cplusplus
 }

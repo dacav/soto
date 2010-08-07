@@ -18,11 +18,9 @@
  *
  */
 
-/** @file options.h
- *
- * This module provieds an options parsing mechanism based on getopt.
- */
-
+/** @file options.h */
+/** @addtogroup BizOptions */
+/*@{*/
 
 #ifndef __defined_headers_options_h
 #define __defined_headers_options_h
@@ -117,6 +115,8 @@ bool opts_signal_shown (opts_t *o);
  * @return The buffer scale
  */
 unsigned opts_get_buffer_scale (opts_t *o);
+
+/*@}*/
 
 #ifdef __cplusplus
 }

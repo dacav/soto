@@ -19,7 +19,7 @@
  */
 
 /** @file alsagw.h */
-/** @addtogroup AlsaGw */
+/** @addtogroup BizAlsaGw */
 /*@{*/
 
 #ifndef __defined_headers_alsagw_h

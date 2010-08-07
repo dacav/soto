@@ -127,7 +127,7 @@ int thread_cb (void *arg)
 }
 
 int specth_subscribe (genth_t **handle, thrd_pool_t *pool,
-                      genth_t *sampth, specth_graphics_t *graphs)
+                      genth_t *sampth, const specth_graphics_t *graphs)
 {
     struct specth_data *ctx;
     thrd_info_t thi;
