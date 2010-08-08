@@ -116,7 +116,6 @@ int main (int argc, char **argv)
 
     memset(&data, 0, sizeof(struct main_data));
     data.threads = dlist_new();
-    data.memlock = false;
 
     if ((data.opts = opts_parse(argc, argv)) == NULL) {
         exit(EXIT_FAILURE);
@@ -190,6 +189,7 @@ int main (int argc, char **argv)
 
     /* Locking memory */
     #ifndef RT_DISABLE
+    data.memlock = false;
     if (mlockall( MCL_CURRENT | MCL_FUTURE )) {
         ERR_FMT("Unable to lock memory: %s", strerror(errno));
         exit(EXIT_FAILURE);
