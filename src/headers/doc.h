@@ -41,9 +41,9 @@ make install
     In order to compile and run Soto you must satisfy the following
     dependencies:
 
-    \arg Alsa Soundlib (v. 1.0.20-3);
-    \arg GNU Plotutils libplot (v. 2.5-4);
-    \arg LibDacav (v. 0.4.2);
+    @arg Alsa Soundlib (v. 1.0.20-3);
+    @arg GNU Plotutils libplot (v. 2.5-4);
+    @arg LibDacav (v. 0.4.2);
 
 @section AboutThis About this manual
 
@@ -73,6 +73,45 @@ make install
     @arg @ref BizOptions;
 
 @section CLI Command Line Usage
+
+    Command line options can be obtained directly from the executable by
+    calling it with the -h flag
+
+@verbatim
+dacav@mithril:<src>$ ./soto  -h
+
+soto 0.2.3
+Usage: ./soto [options]
+
+  --dev={dev} | -d {dev}
+        Specify an audio device (default: "hw:0,0");
+
+  --rate={rate} | -r {rate}
+        Specify a sample rate for ALSA in Hertz (default: 44100);
+
+  --show-spectrum[={bool}] | -U [{bool}]
+        Show the spectrum of the audio stream (default: yes);
+
+  --show-signal[={bool}] | -u [{bool}] 
+        Show the signal of the audio stream (default: no);
+
+  --buffer-scale={factor} | -s {factor}
+        Provide the proportion between sampling buffer and read buffer
+        (default: 10);
+
+  --minprio={priority} | -m {priority}
+        Specify the realtime priority for the thread having the longest
+        sampling period (default 0, required a positive integer);
+
+  --run-for={time in seconds} | -r {time in seconds}
+        Requires the program to run for a certain amount of time.
+        By providing 0 (which is the default) the program will run
+        until interrupted
+
+  --help  | -h
+        Print this help.
+
+@endverbatim
 
 @defgroup Thrd Soft Real Time Threads
 
