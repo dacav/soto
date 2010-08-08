@@ -20,11 +20,17 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
+
 #include <unistd.h>
 #include <sched.h>
 #include <assert.h>
 #include <signal.h>
+#include <errno.h>
+#include <string.h>
+
 #include <sys/types.h>
+#include <sys/mman.h>
 
 #include <dacav/dacav.h>
 
@@ -51,6 +57,10 @@ struct main_data {
      * inverse-order of deallocation, thus by pop-ing elements I obtain
      * the correct deallocation order. */
     dlist_t *threads;
+
+    #ifndef RT_DISABLE
+    bool memlock;
+    #endif
 };
 
 static
@@ -81,6 +91,10 @@ void exit_handler (int xval, void *context)
     if (data->spectrum) plot_destroy(data->spectrum);
     if (data->signal) plot_destroy(data->signal);
 
+    #ifndef RT_DISABLE
+    if (data->memlock) munlockall();
+    #endif
+
     LOG_MSG("Goodbye");
 }
 
@@ -102,6 +116,7 @@ int main (int argc, char **argv)
 
     memset(&data, 0, sizeof(struct main_data));
     data.threads = dlist_new();
+    data.memlock = false;
 
     if ((data.opts = opts_parse(argc, argv)) == NULL) {
         exit(EXIT_FAILURE);
@@ -172,6 +187,15 @@ int main (int argc, char **argv)
         }
         data.threads = dlist_push(data.threads, handle);
     }
+
+    /* Locking memory */
+    #ifndef RT_DISABLE
+    if (mlockall( MCL_CURRENT | MCL_FUTURE )) {
+        ERR_FMT("Unable to lock memory: %s", strerror(errno));
+        exit(EXIT_FAILURE);
+    }
+    data.memlock = true;
+    #endif
 
     if (thrd_start(data.pool)) {
         ERR_FMT("Unable to start Signal Analyzer: %s",

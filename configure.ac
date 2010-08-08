@@ -1,5 +1,5 @@
 AC_PREREQ([2.64])
-AC_INIT([soto], [0.2.2], [simgidacav@gmail.com])
+AC_INIT([soto], [0.2.3], [simgidacav@gmail.com])
 
 AM_INIT_AUTOMAKE([-Wall])
 AC_CONFIG_SRCDIR([src/main.c])
@@ -25,13 +25,15 @@ AC_CHECK_HEADER([alsa/asoundlib.h], [],
 AC_CHECK_HEADER([dacav/dacav.h], [],
                 [AC_MSG_ERROR([Please install libdacav (>= 0.4.2).])])
 AC_CHECK_HEADER([plot.h], [],
-                [AC_MSG_ERROR([Please install libplot.])])
+                [AC_MSG_ERROR([Please install libplot (>= 2.5).])])
 AC_CHECK_HEADER([fftw3.h], [],
                 [AC_MSG_ERROR([Please install libfftw (>= 3.2.1).])])
 
 # Checks for libraries.
 AC_CHECK_LIB([dacav], [dlist_sort], [],
              [AC_MSG_ERROR([libdacav version required: >= 0.4.2]).])
+AC_CHECK_LIB([plot], [pl_newpl_r], [],
+             [AC_MSG_ERROR([libplot version required: (>= 2.5).])])
 AC_CHECK_LIB([fftw3], [fftw_plan_dft_r2c_1d], [],
              [AC_MSG_ERROR([libfftw version required: >= 3.2.1]).])
 
