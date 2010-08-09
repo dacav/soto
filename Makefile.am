@@ -12,4 +12,5 @@ report:
 	 echo "GENERATE_LATEX=YES" ;\
 	 echo "INPUT=src/headers/doc.h" ;\
 	) | doxygen -
+	sed -ire '/File Documentation/,/printindex/d' doc/report/refman.tex
 

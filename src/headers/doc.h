@@ -56,13 +56,14 @@ make install
     html documentation if you need it.
 
     The application provide two general purpose modules that are heavvily
-    used but not strictly related with the application's purpose:
+    used but not strictly related with the application's purpose. Read
+    first:
 
     @arg @ref Thrd;
     @arg @ref GenThrd;
 
-    The following topics will also be discussed for what concerns the
-    business logic:
+    The following topics, concerning the business logic, will also be
+    discussed:
 
     @arg @ref BizAlsaGw;
     @arg @ref BizPlotting;
@@ -74,8 +75,8 @@ make install
 
 @section CLI Command Line Usage
 
-    Command line options can be obtained directly from the executable by
-    calling it with the -h flag
+    Command line options information can be obtained directly from the
+    executable by calling it with the -h flag:
 
 @verbatim
 dacav@mithril:<src>$ ./soto  -h
@@ -137,15 +138,14 @@ Usage: ./soto [options]
 
 @section Thrd_Startup Startup
 
-    When all threads have been subscribed, the brave programmer can start
-    the pool by calling the thrd_start() function, which shall assignment
-    the priority according with the periods provided for the threads.
-    Subsequently the threads will be activated.
-
-    Before enabling the threads, the pool records the current absolute
-    time against the monotonic system clock (CLOCK_MONOTONIC): the
-    startup delay of all threads is relative to the global activation
-    instant.
+    When all threads have been subscribed, the pool can be started
+    by calling the thrd_start() function, which shall assign the
+    priority according with the provided periods.
+    
+    Subsequently the threads will be activated: in order to synchronize
+    every startup delay with a unique instant, the pool records the
+    current absolute time against the Posix monotonic system clock
+    (CLOCK_MONOTONIC).
 
 @section Thrd_Callbacks Callbacks semantics
 
@@ -161,14 +161,8 @@ Usage: ./soto [options]
          after the thread has been required to terminate.
 
     While the latter works just as a simple cleanup procedure for the user
-    context, "Start" and "Business" are characterized by a stricter
-    semantics.
-
-    In the first place they can, at any time, require the thread to be
-    aborted by simply returning a non-zero value.
-    
-    In second place they should respect some real-time related
-    constraints:
+    context, "Start" and "Business" are characterized by some real-time
+    related constraints:
     
     @arg The worst case execution time of "Start" should be lesser than
          the thread startup delay, thus this callback should run only the
@@ -182,11 +176,14 @@ Usage: ./soto [options]
     Since activations times are beat by calls to the clock_nanosleep()
     system call, a defiant behavior with respect to these constraints
     shall result in a null waiting time.
+
+    "Start" and "Business" can, at any time, require the thread to be
+    terminated by simply returning a non-zero value.
     
-    @note A bad designed task set may jeopardize, by domino effect, the
-          whole operating system stability: if the medium case execution
-          time is longer than the period the thread will run as an high
-          priority infinite busy loop!
+    @warning A bad designed task set may jeopardize, by domino effect, the
+             whole operating system stability: if the medium case
+             execution time is longer than the period the thread will run
+             as an high priority infinite busy loop!
 
 @section Thrd_Limitations Shutting down
 
