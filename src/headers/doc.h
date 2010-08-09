@@ -45,33 +45,24 @@ make install
     @arg GNU Plotutils libplot (v. 2.5-4);
     @arg LibDacav (v. 0.4.2);
 
-@section AboutThis About this manual
+@section Known issues
 
-    You may read this text on both the html reference and the report
-    attached to the project: it's basically generated through doxygen from
-    the same source.
+    This program has been tested to be working correctly on both a
+    Debian/Squeeze (64 bit) and a Centos 5.5 (32 bit) system. The audio
+    device in use is a "Intel 82801 (ICH9 Family)".
 
-    This manual explains how the application works. If you are reading the
-    PDF version you won't find a reference manual: please refer to the
-    html documentation if you need it.
+    After running a test on another computer with similar software
+    settings but different hardware settings (namely an "Intel 5
+    series/3400" audio controller) the software freezes.
 
-    The application provide two general purpose modules that are heavvily
-    used but not strictly related with the application's purpose. Read
-    first:
+    This is due to a weird behavior of Alsa: on my machine the
+    snd_pcm_hw_params_get_period_size_min function gives a period size of
+    2^5 (32) frames, while on the other machine the same function with the
+    same sampling rate settings a returns 2^15 (32768) frames size, which
+    is definitely too large for the plotting system.
 
-    @arg @ref Thrd;
-    @arg @ref GenThrd;
-
-    The following topics, concerning the business logic, will also be
-    discussed:
-
-    @arg @ref BizAlsaGw;
-    @arg @ref BizPlotting;
-    @arg @ref BizPlotThread;
-    @arg @ref BizSampling;
-    @arg @ref BizSignal;
-    @arg @ref BizSpectrum;
-    @arg @ref BizOptions;
+    I'm sorry: solving this issue would require messing into Alsa's bogus,
+    and this is beyond the purpose of this project.
 
 @section CLI Command Line Usage
 
@@ -113,6 +104,35 @@ Usage: ./soto [options]
         Print this help.
 
 @endverbatim
+
+@section AboutThis About this manual
+
+    You may read this text on both the html reference and the report
+    attached to the project: it's basically generated through doxygen from
+    the same source.
+
+    This manual explains how the application works. If you are reading the
+    PDF version you won't find a reference manual: please refer to the
+    html documentation if you need it.
+
+    The application provide two general purpose modules that are heavvily
+    used but not strictly related with the application's purpose. Read
+    first:
+
+    @arg @ref Thrd;
+    @arg @ref GenThrd;
+
+    The following topics, concerning the business logic, will also be
+    discussed:
+
+    @arg @ref BizAlsaGw;
+    @arg @ref BizPlotting;
+    @arg @ref BizPlotThread;
+    @arg @ref BizSampling;
+    @arg @ref BizSignal;
+    @arg @ref BizSpectrum;
+    @arg @ref BizOptions;
+
 
 @defgroup Thrd Soft Real Time Threads
 
