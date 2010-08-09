@@ -19,7 +19,7 @@
  */
 
 /** @file sampthread.h */
-/** @addtogroup BizSampThread */
+/** @addtogroup BizSampling */
 /*@{*/
 
 #ifndef __defined_headers_sampth_h
