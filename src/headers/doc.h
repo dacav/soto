@@ -45,7 +45,7 @@ make install
     @arg GNU Plotutils libplot (v. 2.5-4);
     @arg LibDacav (v. 0.4.2);
 
-@section Known issues
+@section Issues Known issues
 
     This program has been tested to be working correctly on both a
     Debian/Squeeze (64 bit) and a Centos 5.5 (32 bit) system. The audio
@@ -57,12 +57,10 @@ make install
 
     This is due to a weird behavior of Alsa: on my machine the
     snd_pcm_hw_params_get_period_size_min function gives a period size of
-    2^5 (32) frames, while on the other machine the same function with the
-    same sampling rate settings a returns 2^15 (32768) frames size, which
-    is definitely too large for the plotting system.
-
-    I'm sorry: solving this issue would require messing into Alsa's bogus,
-    and this is beyond the purpose of this project.
+    2^5 (32) frames, while on the other machine the same function
+    returns 2^15 (32768) frames size, which is definitely too large for
+    the plotting system. This of course has been measured by providing
+    Alsa with the same frame rate on both machines.
 
 @section CLI Command Line Usage
 
@@ -132,7 +130,6 @@ Usage: ./soto [options]
     @arg @ref BizSignal;
     @arg @ref BizSpectrum;
     @arg @ref BizOptions;
-
 
 @defgroup Thrd Soft Real Time Threads
 
@@ -207,13 +204,14 @@ Usage: ./soto [options]
 
 @section Thrd_Limitations Shutting down
 
-    A Thread Pool object is not provided with a shutdown procedure: in
-    order to correctly cleanup and free resources the programmer can use
-    the thrd_destroy() function, which simply waits for all the running
-    thread to be terminated and achieves the cleaning up.
+    A Thread Pool object is not provided with a shutdown procedure: the
+    cleanup procedure provided, namely thrd_destroy(), simply waits for
+    all the running threads to be terminated. Calling this function
+    withouth signaling termination requests to threads won't stop the
+    application.
 
-    An elegant solution to this problem is provided by the
-    @ref GenThrd module.
+    An elegant shutting down mechanism is provided by the @ref GenThrd
+    module.
 
 @defgroup GenThrd Generic Threads Interface
 
@@ -228,22 +226,29 @@ Usage: ./soto [options]
     which would have provided a way to gently ask the thread to die.
     Unfortunately the manpages tells us that &ldquo;signal masks are set
     on a per-thread basis, but signal actions and signal handlers [...]
-    are shared between all threads&rdquo;. Besides, who need signal when
+    are shared between all threads&rdquo;. Nevermind: who need signal when
     there's the pthread_cancel() call does exactly what we need? We just
     need to deal with cancellation points. Unfortunately the developer is
-    forced to do this in all modules! Once realized that this can be
+    forced to do this in all modules! Once realized this can be
     generalized, I had enough cases to make allowance for this code to be
-    written.
+    written. A Generic Threads object wraps the described mechanism.
+    
+    The thread subscription requires two main parameters:
+   
+    @arg A Threading Pool object on which the thread shall be subscribed;
 
-    A Generic Threads object wraps this mechanism: the thread subscription
-    requires as parameter a Threading Pool object and the same
-    specification structure used by the @ref Thrd module (namely
-    thrd_info_t). It subscribes a private initialization function
-    and uses it to retrieve the thread identifier before calling the
-    "Start" function provided by the user. The identifier is internally
-    used to implement a termination procedure for the thread, and with
-    other useful meta-data will be stored into an extension of the context
-    provided by the user. Everything is associated to a handle.f
+    @arg An instance of the specification structure used by the @ref Thrd
+         module (namely thrd_info_t).
+    
+    Internally it subscribes a private initialization function which
+    retrieve the thread identifier before calling the actual "Start"
+    function provided by the user. The identifier's purpose is to
+    implement a termination procedure for the thread.
+    
+    Everything gets stored into a context structure which also will
+    contain other meta-data and the actual context provided by the user.
+    The structure is eventually associated to a transparent handle (which
+    externally is just saw as a pointer to an opaque type).
 
 @section GenThrd_Termination Generic Thread Termination
 
@@ -253,23 +258,25 @@ Usage: ./soto [options]
 
     The module ensures a correct process termination by disabling the
     cancellation of the thread inside its private extension of the
-    initialization function. Cancellation requests are explicitly checked
+    "Start" function. Cancellation requests are explicitly checked
     once per period and the module takes care of executing the user's
-    "Finish" procedure in case it's needed. This is achieved by using the
-    pthread_cleanup_push() and pthread_cleanup_pop() functions.
+    "Finish" procedure trough the Posix pthread_cleanup_push() and
+    pthread_cleanup_pop() functions.
 
 @section GenThrd_Context Developing a Specialized Thread
 
-    From the external developer prospective there's a simple pattern to
+    From the external developer's prospective there's a simple pattern to
     specialize a Generic Thread:
 
     @arg Delegate creation and termination to the genth_subscribe() and
          genth_sendkill() functions respectively;
 
-    @arg Provide further functionalities trough primitives accepting the
-         header as parameter. The context provided with the thrd_info_t
-         structure can be obtained back from the handle by calling the
-         genth_get_context() function.
+    @arg Provide any other functionality trough primitives accepting the
+         header as parameter.
+        
+    @note A module implementing a Generic Thread can obtain back the
+          context provided with the thrd_info_t structure by calling the
+          genth_get_context() function on the handler.
 
     @see The following modules use a generic thread mechanism:
          @ref BizSampling, @ref BizPlotting, @ref BizSignal,
@@ -279,7 +286,8 @@ Usage: ./soto [options]
 
     You may have noticed that this system is somehow similar to the
     inheritance mechanism of object oriented languages: each module using
-    Generic Threads works somehow as a class extending an abstract one.
+    Generic Threads works as a class extending an abstract one (which type
+    is genth_t).
         
     Unfortunately C++'s <em>virtual</em> keyword is not available to this
     mechanism, hence the toughtless programmer may call functions provided
@@ -288,8 +296,8 @@ Usage: ./soto [options]
 
 @defgroup BizAlsaGw Alsa Gateway 
 
-    This module hides Alsa's weird bogus under a hood, providing a simple
-    initialization / finalization / reading interface.
+    This module tries to hide Alsa's weird calls under a hood, providing a
+    simple initialization / finalization / reading interface. 
 
     The alsagw_new() function allocates a new sampler and allows to provide
     some parameters for the underlying library (namely Alsa ASoundLib).
@@ -312,13 +320,13 @@ Usage: ./soto [options]
 @defgroup BizPlotting Plotting Interface
 
     As mentioned in the @ref CompileInstall section, this program uses
-    GNU Libplot for the graphical representation of the data: this module
-    provides a simple interface to the library suited for the
-    application's purpose. In order to obtain a good thread-safe code, the
-    reentrant version of the library is used. 
+    GNU Libplot for the graphical representation of the data: the Plotting
+    Interface module provides a simple interface to the library suited for
+    the application's purpose. In order to obtain a good and thread-safe
+    code, the reentrant version of the library is used.
 
-    The constructor provided by this module allows to allocate a X Window
-    for plotting. The number of functions displayed for each plotting
+    The constructor provided by this module allows to allocate many grapical
+    windows for plotting. The number of functions displayed for each plotting
     window can be configured trough the constructor. A plot_t object
     configured with N graphics will spawn up to N plotgr_t objects, each
     of which corresponds to a graphic.
@@ -330,7 +338,8 @@ Usage: ./soto [options]
     @arg Updating the graph through the plot_graphic_set() function;
     @arg Refreshing the plotting window trough the plot_redraw() function.
 
-    The latter can be easily assigned to a specialized thread by using a
+    The former can be used by a thread to update the graphic, while the
+    latter can be easily assigned to a specialized thread by using a
     @ref BizPlotThread.
 
 @defgroup BizPlotThread Plotting Thread
@@ -343,18 +352,19 @@ Usage: ./soto [options]
    
     The refresh operation is performed 28 times per second, which is
     approximatively the frequency detectable by human eyes. The period
-    corresponds to 35,714,286 nanoseconds.
+    corresponds to 35714286 nanoseconds.
    
     Luckily the chosen period is large enough for the plot_redraw()
     function to be executed. A test I run on my own computer shows that
     redrawing a 100-points sized grapic:
    
-    @arg In the worst case it takes 28,760,359 nanoseconds;
-    @arg In the average case it takes 6,081,251 nanoseconds.
+    @arg In the worst case it takes 28760359 nanoseconds;
+    @arg In the average case it takes 6081251 nanoseconds.
 
-    @note The plotting speed can be somehow tuned by providing a scaling
-          parameter to the application. For further details see the
-          @ref CLI section.
+    @note The plotting speed can be somehow tuned by providing a
+          <em>scaling factor</em> parameter to the application. For
+          further details see the @ref CLI and the @ref BizSampling
+          section.
 
 @defgroup BizSampling Sampling Thread
 
@@ -375,6 +385,11 @@ Usage: ./soto [options]
     function, which performs a thread-safe reading from the oldest to the
     newest slot of the circular buffer.
 
+    @note The period returned by the alsagw_get_period() is not exactly
+          the one expected: a bitrate of 44.1 kHz should require a period
+          of 22675 nanoseconds, while Alsa returns 725000 nanoseconds as
+          optimal period, which by the way works pretty well.
+
 @defgroup BizSignal Signal Thread
 
     This module allows to spawn one (or more) graphical windows showing
@@ -390,7 +405,8 @@ Usage: ./soto [options]
 
     This module allows to spawn one (or more) graphical windows showing
     the spectrum of the signal collected by the @ref BizSampling. The
-    spectrum gets computed by using the fftw3 library.
+    spectrum gets computed by feeding with the samples buffer the
+    functions provided by fftw3 library.
 
     When creating a Signal Thread two couple of plotgr_t objects must be
     provided to the constructor: the former for the first channel (real and
