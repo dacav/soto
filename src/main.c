@@ -192,6 +192,7 @@ int main (int argc, char **argv)
     data.memlock = false;
     if (mlockall( MCL_CURRENT | MCL_FUTURE )) {
         ERR_FMT("Unable to lock memory: %s", strerror(errno));
+        ERR_MSG("You need more privileges to do this!");
         exit(EXIT_FAILURE);
     }
     data.memlock = true;

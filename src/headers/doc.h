@@ -2,11 +2,49 @@
 
 @mainpage Soto - Project for RTOS.
 
-    The SOTO project is focused on a correct, well designed and well
-    documented real-time application which reads data from the microphone
-    by using Alsa asoundlib.  This manual provides both a reference from
-    the user prospective and a technical reference describing how the
-    system works internally.
+    The SOTO (Spectrum Of The Opera) project's aim is to develop a
+    correct, well designed and well documented real-time application which
+    reads data from the microphone by using Alsa asoundlib.  This manual
+    provides both a reference from the user prospective and a technical
+    reference describing how the system works internally.
+
+    The application is based on Posix Threads and,
+    @ref CompileInstall "unless differently configured" it uses the
+    Real-Time API. I chose threads because of they don't need fancy IPC in
+    order to communicate. Threads have been organized into a @ref Thrd
+    "Thread Pool", which implements a Rate Monotonic policy when the
+    Real-Time API is enabled.
+
+    Depending on the command line options, three to five threads may be
+    involved simultaneously with the purpose of displaying either the
+    @ref BizSignal "audio signal", @ref BizSpectrum "its spectrum" or
+    both. This also influences the number of priority level taken by the
+    application.
+
+    The application comes with two general purpose modules that are
+    heavvily used but not strictly related with the application's purpose.
+    In order to quickly figure out how the whole application works, I
+    suggest the reader to have a look first at:
+
+    @arg @ref Thrd;
+    @arg @ref GenThrd;
+
+    The following topics, concerning the business logic, will also be
+    discussed in this document:
+
+    @arg @ref BizAlsaGw;
+    @arg @ref BizPlotting;
+    @arg @ref BizPlotThread;
+    @arg @ref BizSampling;
+    @arg @ref BizSignal;
+    @arg @ref BizSpectrum;
+    @arg @ref BizOptions;
+
+    @note You may read this text on both the html reference and the report
+          attached to the project: it's basically generated through doxygen from
+          the same source. This manual explains how the application works.
+          If you are reading the PDF version you won't find a reference
+          manual: please refer to the html documentation if you need it.
 
 @section CompileInstall Compilation and installation
 
@@ -20,13 +58,15 @@ make install
 @endverbatim
 
     More information is provided by the INSTALL file, which is
-    included in the software package, however two special non-standard
+    included in the software package, however three special non-standard
     options can be provided to the configure script:
 
-    @arg --enable-debug (which will give a more verbose output on stderr);
-    @arg --disable-realtime (which will disable real-time programming).
-    @arg --enable-alsa-hack (which will try to fix a
-         @ref Issues "known issue".
+    @arg @c --enable-debug (which will give a more verbose output on
+         stderr);
+    @arg @c --disable-realtime (which will disable real-time
+         programming).
+    @arg @c --enable-alsa-hack (which will try to fix a
+         @ref Issues "known issue").
 
 @section License
 
@@ -46,34 +86,12 @@ make install
     @arg Alsa Soundlib (v. 1.0.20-3);
     @arg GNU Plotutils libplot (v. 2.5-4);
     @arg LibDacav (v. 0.4.2);
-
-@section Issues Known issues
-
-    This program has been tested to be working correctly on both a
-    Debian/Squeeze (64 bit) and a Centos 5.5 (32 bit) system. The audio
-    device in use is a "Intel 82801 (ICH9 Family)".
-
-    After running a test on another computer with similar software
-    settings but different hardware settings (namely an "Intel 5
-    series/3400" audio controller) the software freezes.
-
-    This is due to a weird behavior of Alsa: on my machine the
-    snd_pcm_hw_params_get_period_size_min function gives a period size of
-    2^5 (32) frames, while on the other machine the same function
-    returns 2^15 (32768) frames size, which is definitely too large for
-    the plotting system. This of course has been measured by providing
-    Alsa with the same frame rate on both machines.
-
-    Probably this problem comes from a wrong interpretation of the (almost
-    useless) Alsa documentation, however an hack can be enabled at
-    configure time.
-
-    @see @ref CompileInstall.
+    @arg Fftw3 (v. 3.2.1).
 
 @section CLI Command Line Usage
 
     Command line options information can be obtained directly from the
-    executable by calling it with the -h flag:
+    executable by calling it with the @c -h flag:
 
 @verbatim
 dacav@mithril:<src>$ ./soto  -h
@@ -99,45 +117,41 @@ Usage: ./soto [options]
 
   --minprio={priority} | -m {priority}
         Specify the realtime priority for the thread having the longest
-        sampling period (default 0, required a positive integer);
+        sampling period (default 0, required a positive integer. This
+        option is useful if you are dealing with other real-time
+        applications.);
 
   --run-for={time in seconds} | -r {time in seconds}
         Requires the program to run for a certain amount of time.
         By providing 0 (which is the default) the program will run
-        until interrupted
+        until interrupted;
 
   --help  | -h
         Print this help.
 
 @endverbatim
 
-@section AboutThis About this manual
+@section Issues Known issues
 
-    You may read this text on both the html reference and the report
-    attached to the project: it's basically generated through doxygen from
-    the same source.
+    This program has been tested to be working correctly on both a
+    Debian/Squeeze (64 bit) and a Centos 5.5 (32 bit) system. The audio
+    device in use is a "Intel 82801 (ICH9 Family)".
 
-    This manual explains how the application works. If you are reading the
-    PDF version you won't find a reference manual: please refer to the
-    html documentation if you need it.
+    After running a test on another computer with similar software
+    settings but different hardware settings (namely an "Intel 5
+    series/3400" audio controller) the software freezes. This is due to a
+    weird behavior of Alsa: on my machine the
+    snd_pcm_hw_params_get_period_size_min function gives a period size of
+    2^5 (32) frames, while on the other machine the same function returns
+    2^15 (32768) frames size, which is definitely too large for the
+    plotting system. This of course has been measured by providing Alsa
+    with the same frame rate on both machines.
 
-    The application provide two general purpose modules that are heavvily
-    used but not strictly related with the application's purpose. Read
-    first:
+    Probably this problem comes from a wrong interpretation of the (almost
+    useless) Alsa documentation, however an hack which overrides the
+    buffer size with a constant value can be enabled at configure time.
 
-    @arg @ref Thrd;
-    @arg @ref GenThrd;
-
-    The following topics, concerning the business logic, will also be
-    discussed:
-
-    @arg @ref BizAlsaGw;
-    @arg @ref BizPlotting;
-    @arg @ref BizPlotThread;
-    @arg @ref BizSampling;
-    @arg @ref BizSignal;
-    @arg @ref BizSpectrum;
-    @arg @ref BizOptions;
+    @see @ref CompileInstall.
 
 @defgroup Thrd Soft Real Time Threads
 
@@ -198,9 +212,10 @@ Usage: ./soto [options]
     @arg The worst case execution time of "Business" should be lesser than
          the period;
 
-    Since activations times are beat by calls to the clock_nanosleep()
-    system call, a defiant behavior with respect to these constraints
-    shall result in a null waiting time.
+    Notice that the Pool follows a Rate Monotonic policy: deadline are
+    equal to the period, and since activations times are beat by calls to
+    the clock_nanosleep() system call, a defiant behavior with respect to
+    these constraints shall result in a null waiting time.
 
     "Start" and "Business" can, at any time, require the thread to be
     terminated by simply returning a non-zero value.
