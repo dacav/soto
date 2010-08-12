@@ -25,6 +25,8 @@ make install
 
     @arg --enable-debug (which will give a more verbose output on stderr);
     @arg --disable-realtime (which will disable real-time programming).
+    @arg --enable-alsa-hack (which will try to fix a
+         @ref Issues "known issue".
 
 @section License
 
@@ -61,6 +63,12 @@ make install
     returns 2^15 (32768) frames size, which is definitely too large for
     the plotting system. This of course has been measured by providing
     Alsa with the same frame rate on both machines.
+
+    Probably this problem comes from a wrong interpretation of the (almost
+    useless) Alsa documentation, however an hack can be enabled at
+    configure time.
+
+    @see @ref CompileInstall.
 
 @section CLI Command Line Usage
 
@@ -373,7 +381,7 @@ Usage: ./soto [options]
 
     The sampling period is obtained by calling the alsagw_get_period(),
     which in turns uses the value computed by Alsa from the parameters
-    provided trough the \ref BizAlsaGw interface.
+    provided trough the @ref BizAlsaGw interface.
 
     When allocating a Sampling Thread a scaling factor must be provided:
     this value is used to dimension an internal buffer which size is

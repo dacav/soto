@@ -140,7 +140,7 @@ int main (int argc, char **argv)
     }
     data.threads = dlist_push(data.threads, sampth);
 
-    DEBUG_FMT("Samp-size: %i\n", (int)sampth_get_size(sampth));
+    DEBUG_FMT("Samp-size: %i", (int)sampth_get_size(sampth));
 
     if (opts_spectrum_shown(data.opts)) {
         genth_t *handle;

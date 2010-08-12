@@ -1,5 +1,5 @@
 AC_PREREQ([2.64])
-AC_INIT([soto], [0.2.3], [simgidacav@gmail.com])
+AC_INIT([soto], [0.2.4], [simgidacav@gmail.com])
 
 AM_INIT_AUTOMAKE([-Wall])
 AC_CONFIG_SRCDIR([src/main.c])
@@ -16,8 +16,20 @@ AC_ARG_ENABLE([debug],
               AC_DEFINE([DEBUG_ENABLED], [], [Debugging log enabled]))
 
 AC_ARG_ENABLE([realtime],
-              AS_HELP_STRING([--disable-realtime], [Disable realtime priority]),
-              AC_DEFINE([RT_DISABLE], [], [Debugging log enabled]))
+              AS_HELP_STRING([--disable-realtime],
+                             [Disable realtime priority]),
+              AC_DEFINE([RT_DISABLE], [], [RealTime extension disabled]))
+
+# Hack for alsa buffer size.
+#
+# On certain systems alsa returns weird values for the buffer size. By
+# enabling this configuration option the size is no longer read from alsa
+# but defined as constant (namely 32).
+#
+AC_ARG_ENABLE([alsa-hack],
+              AS_HELP_STRING([--enable-alsa-hack],
+                             [Enable the buffer size overriding]),
+              AC_DEFINE([ALSAHACK_BUFSIZE], [32], [Debugging log enabled]))
 
 # Checks for header files.
 AC_CHECK_HEADER([alsa/asoundlib.h], [],

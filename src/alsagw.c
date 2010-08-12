@@ -21,6 +21,7 @@
 #include "headers/alsagw.h"
 #include "headers/rtutils.h"
 #include "headers/logging.h"
+#include "headers/config.h"
 
 /* All error OR-ed, for cleanup, used by strerr */
 #define SAMP_ERR_ALL \
@@ -66,8 +67,15 @@ int init_soundcard (snd_pcm_t *handle, unsigned *rate,
     err = snd_pcm_hw_params(handle, hwparams);
     if (err < 0) return err;
 
+    /* See configure.ac and the reference manual for info about this */
+    #ifdef ALSAHACK_BUFSIZE
+    DEBUG_FMT("Alsa hack active, manually setting bufsize to %u",
+              ALSAHACK_BUFSIZE);
+    *nframes = ALSAHACK_BUFSIZE;
+    #else
     err = snd_pcm_hw_params_get_period_size_min(hwparams, nframes, NULL);
     if (err < 0) return err;
+    #endif
 
     err = snd_pcm_hw_params_get_period_time(hwparams, period, NULL);
     if (err < 0) return err;
