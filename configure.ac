@@ -1,5 +1,5 @@
 AC_PREREQ([2.64])
-AC_INIT([soto], [0.2.5], [simgidacav@gmail.com])
+AC_INIT([soto], [0.2.6], [simgidacav@gmail.com])
 
 AM_INIT_AUTOMAKE([-Wall])
 AC_CONFIG_SRCDIR([src/main.c])
@@ -56,7 +56,7 @@ AC_TYPE_UINT8_T
 
 # Checks for library functions.
 AC_CHECK_FUNCS([strerror])
-AC_FUNC_MALLOC
+#AC_FUNC_MALLOC (giving error because of rpl_malloc implementation).
 
 AC_CONFIG_FILES([Makefile
                  src/Makefile
