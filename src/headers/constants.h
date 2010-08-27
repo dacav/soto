@@ -31,14 +31,20 @@ extern "C" {
 
 #include <stdint.h>
 
+/** @brief Number of seconds per microsecond. */
+#define SECOND_uS               1000000UL
+
 /** @brief Number of seconds per nanoseconds. */
-#define SECOND_NS               1000000000UL
+#define SECOND_nS               (1000 * SECOND_uS)
 
 /** @brief Startup delay for sampling thread, seconds. */
 #define SAMP_STARTUP_DELAY_SEC  0
 
 /** @brief Startup delay for sampling thread, nanoseconds. */
 #define SAMP_STARTUP_DELAY_nSEC 500000
+
+/** @breif Buffer size for a single read with ALSA */
+#define ALSA_BUFFER_SIZE       32
 
 /** @brief Period for direct plotting thread, seconds. */
 #define PLOT_PERIOD_SEC        0

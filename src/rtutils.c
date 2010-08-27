@@ -31,9 +31,9 @@ void rtutils_time_increment (struct timespec *target,
 
     target->tv_sec += val->tv_sec;
     nano = target->tv_nsec + val->tv_nsec;
-    if (nano > SECOND_NS) {
+    if (nano > SECOND_nS) {
         target->tv_sec ++;
-        nano -= SECOND_NS;
+        nano -= SECOND_nS;
     }
     target->tv_nsec = nano;
 }
@@ -49,8 +49,8 @@ int rtutils_time_cmp (const struct timespec *s0,
 struct timespec rtutils_ns2time (uint64_t ns)
 {
     struct timespec ret;
-    ret.tv_sec = ns / SECOND_NS;
-    ret.tv_nsec = ns % SECOND_NS;
+    ret.tv_sec = ns / SECOND_nS;
+    ret.tv_nsec = ns % SECOND_nS;
     return ret;
 }
 

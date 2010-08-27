@@ -49,7 +49,7 @@ extern "C" {
 static inline
 uint64_t rtutils_time2ns (const struct timespec *n)
 {
-    return n->tv_nsec + SECOND_NS * n->tv_sec;
+    return n->tv_nsec + SECOND_nS * n->tv_sec;
 }
 
 /** Convert nanoseconds into 'struct timespec'

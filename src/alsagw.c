@@ -37,8 +37,7 @@ struct samp {
 };
 
 static
-int init_soundcard (snd_pcm_t *handle, unsigned *rate,
-                    snd_pcm_uframes_t *nframes, unsigned *period)
+int init_soundcard (snd_pcm_t *handle, unsigned *rate, unsigned *period)
 {
     snd_pcm_hw_params_t *hwparams;
     int err;
@@ -67,18 +66,14 @@ int init_soundcard (snd_pcm_t *handle, unsigned *rate,
     err = snd_pcm_hw_params(handle, hwparams);
     if (err < 0) return err;
 
-    /* See configure.ac and the reference manual for info about this */
-    #ifdef ALSAHACK_BUFSIZE
-    DEBUG_FMT("Alsa hack active, manually setting bufsize to %u",
-              ALSAHACK_BUFSIZE);
-    *nframes = ALSAHACK_BUFSIZE;
-    #else
-    err = snd_pcm_hw_params_get_period_size_min(hwparams, nframes, NULL);
+    err = snd_pcm_hw_params_set_period_size(handle, hwparams,
+                                            ALSA_BUFFER_SIZE, 0);
     if (err < 0) return err;
-    #endif
 
     err = snd_pcm_hw_params_get_period_time(hwparams, period, NULL);
     if (err < 0) return err;
+
+    printf("PERIOD: %u\n", *period);
 
     return 0;
 }
@@ -101,7 +96,6 @@ unsigned alsagw_get_rate (const alsagw_t *samp)
 alsagw_t * alsagw_new (const char *device, unsigned rate, int *err)
 {
     alsagw_t *s;
-    snd_pcm_uframes_t nframes;
     unsigned period;
     snd_pcm_t *pcm;
     int e;
@@ -112,7 +106,7 @@ alsagw_t * alsagw_new (const char *device, unsigned rate, int *err)
         return NULL;
     }
 
-    if ((e = init_soundcard(pcm, &rate, &nframes, &period)) != 0) {
+    if ((e = init_soundcard(pcm, &rate, &period)) != 0) {
         *err = e;
         return NULL;
     }
@@ -121,7 +115,7 @@ alsagw_t * alsagw_new (const char *device, unsigned rate, int *err)
     assert(s);
 
     s->pcm = pcm;
-    s->nframes = nframes;
+    s->nframes = ALSA_BUFFER_SIZE;
     s->period = rtutils_ns2time(1000 * period);
     s->rate = rate;
 
