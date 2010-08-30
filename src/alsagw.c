@@ -37,7 +37,7 @@ struct samp {
 };
 
 static
-int init_soundcard (snd_pcm_t *handle, unsigned *rate, unsigned *period)
+int init_soundcard (snd_pcm_t *handle, unsigned *rate)
 {
     snd_pcm_hw_params_t *hwparams;
     int err;
@@ -66,12 +66,14 @@ int init_soundcard (snd_pcm_t *handle, unsigned *rate, unsigned *period)
     err = snd_pcm_hw_params(handle, hwparams);
     if (err < 0) return err;
 
+    #if 0
     err = snd_pcm_hw_params_set_period_size(handle, hwparams,
                                             ALSA_BUFFER_SIZE, 0);
     if (err < 0) return err;
 
     err = snd_pcm_hw_params_get_period_time(hwparams, period, NULL);
     if (err < 0) return err;
+    #endif
 
     return 0;
 }
@@ -94,7 +96,6 @@ unsigned alsagw_get_rate (const alsagw_t *samp)
 alsagw_t * alsagw_new (const char *device, unsigned rate, int *err)
 {
     alsagw_t *s;
-    unsigned period;
     snd_pcm_t *pcm;
     int e;
     
@@ -104,7 +105,7 @@ alsagw_t * alsagw_new (const char *device, unsigned rate, int *err)
         return NULL;
     }
 
-    if ((e = init_soundcard(pcm, &rate, &period)) != 0) {
+    if ((e = init_soundcard(pcm, &rate)) != 0) {
         *err = e;
         return NULL;
     }
@@ -114,7 +115,7 @@ alsagw_t * alsagw_new (const char *device, unsigned rate, int *err)
 
     s->pcm = pcm;
     s->nframes = ALSA_BUFFER_SIZE;
-    s->period = rtutils_ns2time(1000 * period);
+    s->period = rtutils_ns2time(SECOND_nS * ALSA_BUFFER_SIZE / rate);
     s->rate = rate;
 
     return s;
