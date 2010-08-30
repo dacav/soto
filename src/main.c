@@ -73,6 +73,12 @@ struct main_data {
     #endif
 };
 
+static inline
+void drop_statistics (struct main_data *data)
+{
+    dlist_free(data->stats, free);
+}
+
 static
 void show_statistics (struct main_data *data)
 {
@@ -118,9 +124,14 @@ void exit_handler (int xval, void *context)
         data->threads = dlist_pop(data->threads, (void **)&handle);
         genth_sendkill((genth_t *)handle);
     }
+    dlist_free(data->threads, NULL);
 
-    LOG_MSG("EXECUTION STATISTICS");
-    show_statistics(data);
+    if (xval == EXIT_SUCCESS) {
+        LOG_MSG("EXECUTION STATISTICS");
+        show_statistics(data);
+    } else {
+        drop_statistics(data);
+    }
 
     LOG_MSG("Waiting until they're dead (WARNING: if you just closed");
     LOG_MSG("the window, you've better to kill the program explicitly).");
