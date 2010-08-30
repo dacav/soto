@@ -96,12 +96,13 @@ int thread_cb (void *arg)
     return 0;
 }
 
-int genth_subscribe (genth_t **handle, thrd_pool_t *pool,
-                     const thrd_info_t *info)
+const thrd_rtstats_t *genth_subscribe (genth_t **handle,
+                                       thrd_pool_t *pool,
+                                       const thrd_info_t *info)
 {
     thrd_info_t thi;
     struct genth_data *ctx;
-    int err;
+    const thrd_rtstats_t *ret;
 
     thi.init = init_cb;
     thi.callback = thread_cb;
@@ -119,13 +120,13 @@ int genth_subscribe (genth_t **handle, thrd_pool_t *pool,
     ctx->context = info->context;
     ctx->thread.active = 0;
 
-    if ((err = thrd_add(pool, &thi)) != 0) {
+    if ((ret = thrd_add(pool, &thi)) == NULL) {
         free(ctx);
         *handle = NULL;
     } else {
         *handle = ctx;
     }
-    return err;
+    return ret;
 }
 
 int genth_sendkill (genth_t *handle)

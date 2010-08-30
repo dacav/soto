@@ -34,8 +34,9 @@ int thread_cb (void *arg)
     return 0;
 }
 
-int plotth_subscribe (genth_t **handle, thrd_pool_t *pool,
-                      plot_t *plot)
+const thrd_rtstats_t * plotth_subscribe (genth_t **handle,
+                                         thrd_pool_t *pool,
+                                         plot_t *plot)
 {
     thrd_info_t thi;
 

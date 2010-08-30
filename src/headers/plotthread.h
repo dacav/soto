@@ -43,8 +43,9 @@ extern "C" {
  * @return This function just adds something to pool, therefore you may
  *         interpret its return value as if it were thrd_add().
  */
-int plotth_subscribe (genth_t **handle, thrd_pool_t *pool,
-                      plot_t *plot);
+const thrd_rtstats_t * plotth_subscribe (genth_t **handle,
+                                         thrd_pool_t *pool,
+                                         plot_t *plot);
 
 /*@}*/
 

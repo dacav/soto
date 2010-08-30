@@ -84,6 +84,20 @@ typedef struct {
 
 } thrd_info_t;
 
+/** Statistics about the realtime thread.
+ *
+ * Each thread is internally characterized by an instance of this
+ * structures. A pointer for each thread is returned by the thrd_add()
+ * function.
+ */
+typedef struct {
+    uint64_t response_times;    /**< Sum of response times (used to build
+                                 *   average); */
+    uint64_t n_executions;      /**< Number of executions; */
+    uint64_t wcrt;              /**< Worst case response time; */
+    uint64_t dmiss_count;       /**< Number of deadline misses. */
+} thrd_rtstats_t;
+
 /** Pool of real-time threads */
 typedef struct thrd_pool thrd_pool_t;
 
@@ -110,10 +124,8 @@ thrd_pool_t * thrd_new (unsigned minprio);
  * freeing memory.
  *
  * @param pool The pool to be freed.
- * @param miss If provided, this long long integer will contain the total
- *             number of deadline misses.
  */
-void thrd_destroy (thrd_pool_t *pool, unsigned long long *miss);
+void thrd_destroy (thrd_pool_t *pool);
 
 /** Add a new thread to the pool
  *
@@ -121,10 +133,15 @@ void thrd_destroy (thrd_pool_t *pool, unsigned long long *miss);
  *
  * @param pool The pool to be extended with a new thread;
  * @param new_thrd The specification for the new thread.
- * @return 0 on success, -1 if the pool has been already started once by
- *         calling thrd_start.
+ * @return NULL if the pool has been already started, a statistical
+ *              descriptor otherwise.
+ *
+ * @warning The statistical descriptor is part of the pool internals: as
+ *          such it must not be deallocated nor accesses after calling
+ *          the thrd_destroy() function.
  */
-int thrd_add (thrd_pool_t *pool, const thrd_info_t * new_thrd);
+const thrd_rtstats_t * thrd_add (thrd_pool_t *pool,
+                                 const thrd_info_t * new_thrd);
 
 /** Start the threads
  *

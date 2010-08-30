@@ -30,6 +30,7 @@
 #include <string.h>
 #include <signal.h>
 #include <unistd.h>
+#include <stdint.h>
 
 /* Flags for thrd_t::status */
 #define THRD_ALIVE          1 << 0
@@ -70,8 +71,25 @@ typedef struct {
     struct timespec start;      /* Pool start time, used for computing the
                                    delay during startup phase; */
 
-    unsigned dmiss_count;       /* Deadline miss counter. */
+    thrd_rtstats_t statistics;  /* Statistics about the task. */
 } thrd_t; 
+
+static
+void update_statistics (thrd_rtstats_t *stats, uint64_t r, uint64_t f,
+                        int deadline_miss)
+{
+    uint64_t response = f - r;
+
+    stats->response_times += response;
+    stats->n_executions ++;
+    if (stats->wcrt < response) {
+        stats->wcrt = response;
+    }
+    if (deadline_miss) {
+        stats->dmiss_count ++;
+        DEBUG_MSG("Deadline miss");
+    }
+}
 
 /* Each real-time thread of this project actually corresponds to the
  * execution of this routine. */
@@ -83,6 +101,7 @@ void * thread_routine (void * arg)
     thrd_t *thrd = (thrd_t *)arg;
     struct timespec next_act;
     struct timespec finish_time;
+    struct timespec arrival_time;
     void *context;
 
     context = thrd->info.context;
@@ -106,6 +125,7 @@ void * thread_routine (void * arg)
      * computed. */
     rtutils_get_now(&next_act);
     for (;;) {
+        rtutils_time_copy(&arrival_time, &next_act);
         rtutils_time_increment(&next_act, &thrd->info.period);
 
         if (thrd->info.callback(context)) {
@@ -117,10 +137,11 @@ void * thread_routine (void * arg)
             pthread_exit(NULL);
         }
         rtutils_get_now(&finish_time);
-        if (rtutils_time_cmp(&next_act, &finish_time) > 0) {
-            DEBUG_MSG("Deadline miss");
-            thrd->dmiss_count ++;
-        }
+
+        update_statistics(&thrd->statistics,
+                          rtutils_time2ns(&arrival_time),
+                          rtutils_time2ns(&finish_time),
+                          rtutils_time_cmp(&next_act, &finish_time) > 0);
 
         rtutils_wait(&next_act);
     }
@@ -132,7 +153,6 @@ void * thread_routine (void * arg)
 static
 int startup(thrd_t *thrd, struct timespec *enabtime)
 {   
-
     #ifndef RT_DISABLE
     pthread_attr_t attr;
     struct sched_param param = {
@@ -150,26 +170,28 @@ int startup(thrd_t *thrd, struct timespec *enabtime)
     memcpy((void *) &thrd->start, (const void *)enabtime,
            sizeof(struct timespec));
     rtutils_time_increment(&thrd->start, &thrd->info.delay);
-    thrd->dmiss_count = 0;
+
+    /* Setting stats to zero */
+    memset(&thrd->statistics, 0, sizeof(thrd_rtstats_t));
 
     #ifndef RT_DISABLE
-    /* Setting thread as real-time, scheduled as FIFO and with the given
-     * priority. */
-    err = pthread_attr_init(&attr);
-    assert(err == 0);
-    err = pthread_attr_setschedpolicy(&attr, SCHED_FIFO);
-    assert(err == 0);
-    err = pthread_attr_setschedparam(&attr, &param);
-    assert(err == 0);
-    err = pthread_attr_setinheritsched(&attr, PTHREAD_EXPLICIT_SCHED);
-    assert(err == 0);
+        /* Setting thread as real-time, scheduled as FIFO and with the given
+         * priority. */
+        err = pthread_attr_init(&attr);
+        assert(err == 0);
+        err = pthread_attr_setschedpolicy(&attr, SCHED_FIFO);
+        assert(err == 0);
+        err = pthread_attr_setschedparam(&attr, &param);
+        assert(err == 0);
+        err = pthread_attr_setinheritsched(&attr, PTHREAD_EXPLICIT_SCHED);
+        assert(err == 0);
 
-    err = pthread_create(&thrd->handler, &attr, thread_routine,
-                         (void *) thrd);
-    pthread_attr_destroy(&attr);
+        err = pthread_create(&thrd->handler, &attr, thread_routine,
+                             (void *) thrd);
+        pthread_attr_destroy(&attr);
     #else
-    err = pthread_create(&thrd->handler, NULL, thread_routine,
-                         (void *) thrd);
+        err = pthread_create(&thrd->handler, NULL, thread_routine,
+                             (void *) thrd);
     #endif
 
     if (err != 0) return err;
@@ -179,7 +201,8 @@ int startup(thrd_t *thrd, struct timespec *enabtime)
     return 0;
 }
 
-int thrd_add (thrd_pool_t *pool, const thrd_info_t * new_thrd)
+const thrd_rtstats_t * thrd_add (thrd_pool_t *pool,
+                                 const thrd_info_t * new_thrd)
 {
     thrd_t *item;
 
@@ -191,7 +214,7 @@ int thrd_add (thrd_pool_t *pool, const thrd_info_t * new_thrd)
 
     if (pool->status & THRD_POOL_ACTIVE) {
         pool->status |= THRD_ERR_CLOSED;
-        return -1;
+        return NULL;
     }
 
     item = (thrd_t *) malloc(sizeof(thrd_t));
@@ -203,7 +226,7 @@ int thrd_add (thrd_pool_t *pool, const thrd_info_t * new_thrd)
     /* New thread is added to the thread list */
     pool->threads = dlist_append(pool->threads, (void *)item);
 
-    return 0;
+    return &item->statistics;
 }
 
 /* Comparsion between threads, allows to determine which has the smallest
@@ -326,20 +349,8 @@ void free_thread (void *thrd)
     free(t);
 }
 
-void thrd_destroy (thrd_pool_t *pool, unsigned long long *miss)
+void thrd_destroy (thrd_pool_t *pool)
 {
-    diter_t *i;
-    unsigned long long m = 0;
-
-    if (miss != NULL) {
-        i = dlist_iter_new(&pool->threads);
-        while (diter_hasnext(i)) {
-            thrd_t *t = diter_next(i);
-            m += t->dmiss_count;
-        }
-        dlist_iter_free(i);
-        *miss = m;
-    }
     dlist_free(pool->threads, free_thread);
 }
 

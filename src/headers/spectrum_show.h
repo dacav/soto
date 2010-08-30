@@ -61,8 +61,10 @@ typedef struct {
  * @return This function just adds something to pool, therefore you may
  *         interpret its return value as if it were thrd_add().
  */
-int specth_subscribe (genth_t **handle, thrd_pool_t *pool,
-                      genth_t *sampth, const specth_graphics_t *graphs);
+const thrd_rtstats_t * specth_subscribe (genth_t **handle,
+                                         thrd_pool_t *pool,
+                                         genth_t *sampth,
+                                         const specth_graphics_t *graphs);
 
 /*@}*/
 

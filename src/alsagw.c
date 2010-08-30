@@ -73,8 +73,6 @@ int init_soundcard (snd_pcm_t *handle, unsigned *rate, unsigned *period)
     err = snd_pcm_hw_params_get_period_time(hwparams, period, NULL);
     if (err < 0) return err;
 
-    printf("PERIOD: %u\n", *period);
-
     return 0;
 }
 

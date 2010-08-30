@@ -46,8 +46,10 @@ extern "C" {
  * @return This function just adds something to pool, therefore you may
  *         interpret its return value as if it were thrd_add().
  */
-int sampth_subscribe (genth_t **handler, thrd_pool_t *pool,
-                      alsagw_t *samp, size_t scaling_factor);
+const thrd_rtstats_t * sampth_subscribe (genth_t **handler,
+                                         thrd_pool_t *pool,
+                                         alsagw_t *samp,
+                                         size_t scaling_factor);
 
 /** Getter for the size of the reading buffer.
  *

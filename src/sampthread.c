@@ -83,13 +83,15 @@ int thread_cb (void *arg)
     return 0;
 }
 
-int sampth_subscribe (genth_t **handler, thrd_pool_t *pool,
-                      alsagw_t *samp, size_t scaling_factor)
+const thrd_rtstats_t * sampth_subscribe (genth_t **handler,
+                                         thrd_pool_t *pool,
+                                         alsagw_t *samp,
+                                         size_t scaling_factor)
 {
     thrd_info_t thi;
     struct sampth_data *ctx;
     const struct timespec * period;
-    int err;
+    const thrd_rtstats_t * err;
 
     thi.init = NULL;
     thi.callback = thread_cb;
@@ -127,7 +129,7 @@ int sampth_subscribe (genth_t **handler, thrd_pool_t *pool,
     /* Period request for the thread pool */
     rtutils_time_copy(&thi.period, period);
 
-    if ((err = genth_subscribe(handler, pool, &thi)) != 0) {
+    if ((err = genth_subscribe(handler, pool, &thi)) == 0) {
         free(ctx->buffer);
         free(ctx);
     }

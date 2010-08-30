@@ -126,12 +126,14 @@ int thread_cb (void *arg)
     return 0;
 }
 
-int specth_subscribe (genth_t **handle, thrd_pool_t *pool,
-                      genth_t *sampth, const specth_graphics_t *graphs)
+const thrd_rtstats_t * specth_subscribe (genth_t **handle,
+                                         thrd_pool_t *pool,
+                                         genth_t *sampth,
+                                         const specth_graphics_t *graphs)
 {
     struct specth_data *ctx;
     thrd_info_t thi;
-    int err;
+    const thrd_rtstats_t *err;
     size_t buflen;
 
     thi.init = NULL;
@@ -166,7 +168,7 @@ int specth_subscribe (genth_t **handle, thrd_pool_t *pool,
     ctx->ft.plan = fftw_plan_dft_r2c_1d(buflen, ctx->ft.in, ctx->ft.out,
                                         FFTW_MEASURE);
 
-    if ((err = genth_subscribe(handle, pool, &thi)) != 0) {
+    if ((err = genth_subscribe(handle, pool, &thi)) == NULL) {
         free(ctx->buffer);
         free(ctx);
     }

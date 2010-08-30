@@ -64,12 +64,15 @@ int thread_cb (void *arg)
     return 0;
 }
 
-int signth_subscribe (genth_t **handle, thrd_pool_t *pool,
-                      genth_t *sampth, plotgr_t *g0, plotgr_t *g1)
+const thrd_rtstats_t * signth_subscribe (genth_t **handle,
+                                         thrd_pool_t *pool,
+                                         genth_t *sampth,
+                                         plotgr_t *g0,
+                                         plotgr_t *g1)
 {
     struct signth_data *ctx;
     thrd_info_t thi;
-    int err;
+    const thrd_rtstats_t * err;
 
     thi.init = NULL;
     thi.callback = thread_cb;
@@ -97,7 +100,7 @@ int signth_subscribe (genth_t **handle, thrd_pool_t *pool,
     ctx->g1 = g1;
     ctx->sampth = sampth;
 
-    if ((err = genth_subscribe(handle, pool, &thi)) != 0) {
+    if ((err = genth_subscribe(handle, pool, &thi)) == NULL) {
         free(ctx->buffer);
         free(ctx);
     }

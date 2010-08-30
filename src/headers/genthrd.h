@@ -46,8 +46,9 @@ typedef struct genth_data genth_t;
  * @return This function just adds something to pool, therefore you may
  *         interpret its return value as if it were thrd_add().
  */
-int genth_subscribe (genth_t **handle, thrd_pool_t *pool,
-                     const thrd_info_t *info);
+const thrd_rtstats_t * genth_subscribe (genth_t **handle,
+                                        thrd_pool_t *pool,
+                                        const thrd_info_t *info);
 
 /** @brief Request thread termination.
  *
